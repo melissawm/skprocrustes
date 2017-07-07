@@ -1,0 +1,35 @@
+Configuration and Installation of skprocrustes for further development
+======================================================================
+
+1. Configure a conda environment for the development:
+
+   $ conda create --name envname [pkgs]
+
+   In our case:
+
+   $ conda create --name envname scipy numpy matplotlib ipython
+
+   Activate the new environment:
+
+   $ source activate envname
+
+   To deactivate:
+
+   $ source deactivate
+
+   To list current environments:
+
+   $ conda env list
+
+   More details at https://conda.io/docs/using/envs.html [Official Conda Documentation]
+
+2. With the environment activated, install the package by navigating to the root directory of the package and doing
+
+   $ python setup.py install
+
+   (Depending on your installation of conda/miniconda, you might have to prepend the above command with sudo)
+
+3. Import the module and be happy!
+
+   >>> import skprocrustes
+
