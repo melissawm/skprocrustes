@@ -34,8 +34,11 @@ Author
 ======
 
 Melissa Weber Mendonça
-Department of Mathematics
-Federal University of Santa Catarina (UFSC)
-Florianópolis, SC - Brasil
+
+*Department of Mathematics*
+
+*Federal University of Santa Catarina (UFSC)*
+
+*Florianópolis, SC - Brasil*
 
 6 July 2017
