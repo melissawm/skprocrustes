@@ -4,17 +4,16 @@ from numpy.testing import (assert_raises, assert_allclose, assert_equal,
                            assert_almost_equal, assert_warns, assert_array_less)
 from scipy import linalg as sp
 import skprocrustes as skp
-import nose
 
 # Testing functions inside ProcrustesProblem class:
 class TestSetProblem(TestCase):
-    
+
     #def _setproblem(self, matrices, problemnumber):
     # A(m,n), B(m,q), C(p,q) -> problem matrices
 
     def test_setproblem_dimensions_square(self):
         assert_raises(Exception, skp.ProcrustesProblem, (10,2,5,10), problemnumber=1)
-    
+
     def test_setproblem_dimensions(self):
         problem = skp.ProcrustesProblem((10,10,2,2), problemnumber=1)
         assert_equal(problem.A.shape[0], 10)
@@ -45,7 +44,7 @@ class TestSetProblem(TestCase):
 
     def test_setproblem_dimensions_problem3(self):
         assert_raises(Exception, skp.ProcrustesProblem, (10,10,5,5), problemnumber=3)
-        
+
     def test_setproblem_singular_values_problem_1(self):
         problem = skp.ProcrustesProblem((10,10,2,2), problemnumber=1)
         U, S, VT = sp.svd(problem.A)
@@ -143,7 +142,7 @@ class TestSPGSolver(TestCase):
 
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.SPGSolver, maxiter=10.5)
-        
+
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.SPGSolver, verbose=5)
 
@@ -162,7 +161,7 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.GKBSolver, full_results=" ")
-        
+
     def test_setoptions_strategy(self):
         assert_raises(Exception, skp.GKBSolver, strategy=" ")
 
@@ -171,7 +170,7 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GKBSolver, maxiter=10.5)
-        
+
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.GKBSolver, verbose=5)
 
@@ -196,7 +195,7 @@ class TestEBSolver(TestCase):
 
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.EBSolver, maxiter=10.5)
-        
+
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.EBSolver, verbose=2)
 
@@ -218,7 +217,7 @@ class TestGPISolver(TestCase):
 
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GPISolver, maxiter=10.5)
-        
+
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.GPISolver, verbose=2)
 
@@ -243,7 +242,7 @@ class TestSpectralSolver(TestCase):
         mysolver = skp.SPGSolver()
         result = mysolver.solve(problem)
         assert_array_less(result.nbiter, 8)
-       
+
     def test_spectral_solver_known_solution_spg_problem_2(self):
         A = np.asarray([[-4.955319052527563883e+00, 9.490698890235075069e+00, \
                          3.871013427009882690e+01, -2.407812454150707637e+01],
@@ -342,13 +341,13 @@ class TestBlockBidiag(TestCase):
         A = np.dot(Qtrue,Rtrue)
         B = np.dot(A, np.ones((n,p)))
         C = np.eye(p,q)
-        
+
         U = np.zeros((m,m))
         V = np.zeros((n,n))
         T = np.zeros((m,n+q))
 
         problem = skp.ProcrustesProblem((m,n,p,q), matrices=(A,B,C))
-        
+
         U, V, T, B1, reorth = skp.blockbidiag(problem, U, V, T, nsteps, partial)
 
         # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
@@ -401,7 +400,7 @@ class TestEBSolver(TestCase):
         mysolver = skp.EBSolver()
         result = mysolver.solve(problem)
         assert_allclose(result.nfev, 21)
-        assert_allclose(result.fun, 6.021465862884726e-07)        
+        assert_allclose(result.fun, 6.021465862884726e-07)
 
     def test_eb_solver_known_solution_problem_2(self):
         A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
@@ -438,7 +437,7 @@ class TestEBSolver(TestCase):
     #     problem.C = np.random.rand(2,2)
     #     assert_raises(Exception, problem.set_options, solver="eb")
 
-    
+
 class TestGPISolver(TestCase):
 
     def test_gpi_solver_known_solution_small(self):
@@ -460,7 +459,7 @@ class TestGPISolver(TestCase):
                       [6.355695000758535329e+00, 8.514938821664049584e+00,\
                        4.926367379292874715e-01, 3.889893914905437455e+00],
                       [-6.186446461568055888e-01, -8.111306483700752024e-01,\
-                       9.932080492258702265e+00, 4.599731376522814053e+00]])        
+                       9.932080492258702265e+00, 4.599731376522814053e+00]])
         B = np.asarray([[-6.793095607530246660e+00, 5.215698321012116168e+00],
                         [1.822680160805416616e+00, 7.178797488759216527e+00],
                         [8.514938821664049584e+00, 3.889893914905437455e+00],
@@ -471,7 +470,7 @@ class TestGPISolver(TestCase):
         mysolver = skp.GPISolver()
         result = mysolver.solve(problem)
         assert_allclose(result.nfev, 7)
-        assert_allclose(result.fun, 5.868725008379679e-07)        
+        assert_allclose(result.fun, 5.868725008379679e-07)
 
     def test_gpi_solver_known_solution_problem_2(self):
         A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
