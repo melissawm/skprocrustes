@@ -123,7 +123,7 @@ latex_elements = {
 
     # Additional stuff for the LaTeX preamble.
     #
-    'preamble': ('\usepackage[utf8]{inputenc}', '\usepackage[T1]{fontenc}'),
+    #'preamble': 
 
     # Latex figure (float) alignment
     #
