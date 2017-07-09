@@ -1,0 +1,4 @@
+include *.rst
+include *.txt
+recursive-include skprocrustes/ *.py
+recursive-include docs *
