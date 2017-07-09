@@ -1985,26 +1985,32 @@ def compare_solvers(problem, *args, plot=False):
     """
 
     # TODO turn off verbose for comparison
-
+    
     results = []
     if plot:
         fig, ax = plt.subplots()
         
     for solver in args:
+        solverresult = solver.solve(problem)
+        if "total_fun" not in solverresult.keys():
+            raise Exception("For full results, set full_results=True when "
+                            "creating the solver instance.")
         if solver.solvername == "spg":
             plotlabel = "SPG Solver"
         elif solver.solvername == "eb":
             plotlabel = "EB Solver"
         elif solver.solvername == "gpi":
             plotlabel = "GPI Solver"
-        results.append(solver.solve(problem))
+        results.append(solverresult)
         y = np.asarray(results[-1].total_fun)
-        plt.semilogy(y, label=plotlabel)
-        legend = ax.legend()
-        plt.xlabel("Iterations")
-        plt.ylabel("Objective")
-        plt.title("Problem "+str(problem.problemnumber))
-        
-    plt.show()
+        if plot:
+            plt.semilogy(y, label=plotlabel)
+            legend = ax.legend()
+            plt.xlabel("Iterations")
+            plt.ylabel("Objective")
+            plt.title("Problem "+str(problem.problemnumber))
+
+    if plot:
+        plt.show()
         
     return results
