@@ -987,6 +987,9 @@ def spectral_setup(problem, solvername, options):
             X = np.zeros((n,p))
             Bk = np.copy(problem.B)
 
+        if verbose > 0:
+            print("                SPG Solver")
+            
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n, \
                                                                 X, problem.A, \
                                                                 Bk, solvername,\
@@ -1006,14 +1009,12 @@ def spectral_setup(problem, solvername, options):
     elif solvername == "gkb":
 
         problem.stats["blocksteps"] = 0
-        
+        if verbose > 0:
+            print("                GKB Solver")
         residuals = []
         # Setting up number of steps allowed in block Lanczos mode
         maxsteps = m/q
 
-        if options["verbose"] == 1:
-            print("  outer         f               normg   nbinnerits ")
-            print("====================================================")
         # k = current Lanczos block
         k = 1
         while k <= maxsteps and normgrad > options["gtol"]:
@@ -1157,8 +1158,8 @@ def spectral_setup(problem, solvername, options):
 
     if normgrad <= options["gtol"]:
         msg = _status_message['success']
-        if options["verbose"] > 0:
-            print(msg)
+        # if options["verbose"] > 0:
+        #     print(msg)
 
     return f, normgrad, exitcode, msg
 
@@ -1562,8 +1563,8 @@ def blockbidiag(problem, U, V, T, steps, partial):
         # This is the first block
         U[0:m,0:s] = np.copy(Q[0:m,0:s])
 
-        # Now, we compute the QR decomposition of A'*U(:,1:s)
-        # to find V(:,1:s)T(1:s,1:s) = A'*U(:,1:s)
+        # Now, we compute the QR decomposition of A.T*U[:,0:s]
+        # to find V[:,0:s]*T[0:s,0:s] = A.T*U[:,0:s]
 
         Q, R = sp.qr(np.dot(problem.A.T, U[0:m,0:s]), overwrite_a=True, \
                      mode='economic')
@@ -1609,7 +1610,7 @@ def blockbidiag(problem, U, V, T, steps, partial):
 
         # Same for V:
         # First, we take the matrix that should be decomposed into Q and R:
-        # V_{i+1}A{i+1} = A'*U_{i+1} - V_iB_{i+1}' = prod[0:n,0:s]         
+        # V_{i+1}A{i+1} = A.T*U_{i+1} - V_iB_{i+1}.T = prod[0:n,0:s]         
         prod = np.dot(problem.A.T, U[0:m, inds:inds+s]) \
                - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T)
 
@@ -1732,10 +1733,8 @@ def debug_bidiag(i, s, inds, A, B, U, V, T):
     print("\n        A.T*UU(i+1) - VV(i)*T(i).T - V(i+1)*A(i+1)*E(i+1).T = {}\n".format(errorRecurrence3))
 
 def optimality(A, C, X, R):
-    # Test optimality of X0
-    # grad = 2*A'*R*C'
+    # Test optimality of X
     grad = 2.0*np.dot(A.T, np.dot(R, C.T))
-    # grad_proj = X* (X'*grad + grad'*X) - 2*grad
     gradproj = np.dot(X, (np.dot(X.T, grad)+np.dot(grad.T, X))) - 2.0*grad
     normg = sp.norm(gradproj, 'fro')
     return grad, normg
@@ -1783,7 +1782,7 @@ def eb_solver(problem, options):
     # with an expansion [B, Bhat] of B. In ref. [2], Bhat was simply set to
     # be zero or a randomly chosen matrix. A better initial guess
     # Bhat = AE
-    # was suggested in ref. [3] with E the eigenvector matrix of A'*A
+    # was suggested in ref. [3] with E the eigenvector matrix of A.T*A
     # corresponding to its n-k smallest eigenvalues."
         
     #G(n,n) = [X(n,p), H(n,n-p)]
@@ -1817,7 +1816,7 @@ def eb_solver(problem, options):
 
         # Solve the expansion problem
         # min norm(AG-[B, AH], 'fro') s.t. G'G=I
-        # by finding the svd of A'[B, AH].
+        # by finding the svd of A.T[B, AH].
         H = G[0:n, p:n]
         AH = np.dot(problem.A, H)
         B = np.concatenate((problem.B, AH), axis=1)
@@ -1983,33 +1982,44 @@ def compare_solvers(problem, *args, plot=False):
        nature of its iterations. In the future, it should be possible to add 
        a tool to compare it to other algorithms.
     """
-
+    import time
+    
     # TODO turn off verbose for comparison
     
     results = []
+    solvetime = []
     if plot:
         fig, ax = plt.subplots()
+
+    cputime = "Solver          CPU time\n========================================\n"
         
     for solver in args:
+        t1 = time.clock()
         solverresult = solver.solve(problem)
+        t2 = time.clock()
+        solvetime = t2-t1
         if "total_fun" not in solverresult.keys():
             raise Exception("For full results, set full_results=True when "
                             "creating the solver instance.")
         if solver.solvername == "spg":
             plotlabel = "SPG Solver"
         elif solver.solvername == "eb":
-            plotlabel = "EB Solver"
+            plotlabel = "EB Solver "
         elif solver.solvername == "gpi":
             plotlabel = "GPI Solver"
+        elif solver.solvername == "gkb":
+            plotlabel = "GKB Solver"
         results.append(solverresult)
+        cputime = cputime+"{}     {}\n".format(plotlabel, solvetime)
         y = np.asarray(results[-1].total_fun)
-        if plot:
+        if plot and solver.solvername != "gkb":
             plt.semilogy(y, label=plotlabel)
             legend = ax.legend()
             plt.xlabel("Iterations")
             plt.ylabel("Objective")
-            plt.title("Problem "+str(problem.problemnumber))
+            plt.title("Problem "+str(problem.problemnumber))        
 
+    print(cputime)
     if plot:
         plt.show()
         
