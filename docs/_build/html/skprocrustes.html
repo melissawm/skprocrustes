@@ -24,7 +24,7 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Solvers" href="solvers.html" />
+    <link rel="next" title="BSD 2-Clause License" href="license.html" />
     <link rel="prev" title="scikit-procrustes" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -73,7 +73,7 @@
 C_{p\times q}\)</span> and <span class="math">\(X_{n\times p}\)</span>.</dd>
 <dt><em>(optional)</em> <code class="docutils literal"><span class="pre">problemnumber</span></code>: int</dt>
 <dd>Can be <code class="docutils literal"><span class="pre">1</span></code>, <code class="docutils literal"><span class="pre">2</span></code> or <code class="docutils literal"><span class="pre">3</span></code>, and selects one of the predefined
-problems as described in reference <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[4]</span></a>.
+problems as described in reference <a class="reference internal" href="index.html#zhandu06" id="id1">[ZD06]</a>.
 (for more details, see the documentation for <code class="docutils literal"><span class="pre">_setproblem</span></code>)</dd>
 <dt><em>(optional)</em> <code class="docutils literal"><span class="pre">matrices</span></code>: list of ndarrays</dt>
 <dd>If present, must contain a list of three or four matrices 
@@ -107,7 +107,7 @@ is built.</p>
 <dd><p>Method to effectively build A, B, and C if they are not already given.</p>
 <p><em>This method should not be called directly; it is called by the 
 ProcrustesProblem constructor.</em></p>
-<p>Available problems are all based on reference <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[4]</span></a>:
+<p>Available problems are all based on reference <a class="reference internal" href="index.html#zhandu06" id="id2">[ZD06]</a>:
 All problems have the form</p>
 <blockquote>
 <div><div class="math">
@@ -288,7 +288,7 @@ something like this:</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">skprocrustes.skprocrustes.ProcrustesSolver</span></code></p>
 <p>Subclass containing the call to the <code class="docutils literal"><span class="pre">spectral_setup()</span></code> function 
 corresponding to the Spectral Projected Gradient solver described in 
-<a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[1]</span></a> and <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[2]</span></a>.</p>
+<a class="reference internal" href="index.html#franbaza12" id="id3">[FB12]</a> and <a class="reference internal" href="index.html#franbazawebe17" id="id4">[FBM17]</a>.</p>
 <p>Usage example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mysolver</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">SPGSolver</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">mysolver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
@@ -314,12 +314,12 @@ comparison between solvers)</dd>
 </li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">&quot;bazfr&quot;</span></code> <span class="classifier-delimiter">:</span> <span class="classifier"></span></dt>
-<dd>nonmonotone method according to <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[1]</span></a></dd>
+<dd>nonmonotone method according to <a class="reference internal" href="index.html#franbaza12" id="id5">[FB12]</a></dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">&quot;newfw&quot;</span></code> <span class="classifier-delimiter">:</span> <span class="classifier"></span></dt>
-<dd>nonmonotone method according to <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[2]</span></a></dd>
+<dd>nonmonotone method according to <a class="reference internal" href="index.html#franbazawebe17" id="id6">[FBM17]</a></dd>
 </dl>
 </li>
 </ul>
@@ -385,7 +385,7 @@ SPGSolver constructor.</em></p>
 <p>Subclass containing the call to the <code class="docutils literal"><span class="pre">spectral_setup()</span></code> function 
 corresponding to the Spectral Projected Gradient Method using 
 incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in 
-<a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[2]</span></a>. This class extends the <code class="docutils literal"><span class="pre">SPGSolver</span></code> class,
+<a class="reference internal" href="index.html#franbazawebe17" id="id7">[FBM17]</a>. This class extends the <code class="docutils literal"><span class="pre">SPGSolver</span></code> class,
 with some variation in the input and output parameters.</p>
 <p>Usage example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mysolver</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">GKBSolver</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
@@ -412,12 +412,12 @@ comparison between solvers)</dd>
 </li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">&quot;bazfr&quot;</span></code> <span class="classifier-delimiter">:</span> <span class="classifier"></span></dt>
-<dd>nonmonotone method according to <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[1]</span></a></dd>
+<dd>nonmonotone method according to <a class="reference internal" href="index.html#franbaza12" id="id8">[FB12]</a></dd>
 </dl>
 </li>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">&quot;newfw&quot;</span></code> <span class="classifier-delimiter">:</span> <span class="classifier"></span></dt>
-<dd>nonmonotone method according to <a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[2]</span></a></dd>
+<dd>nonmonotone method according to <a class="reference internal" href="index.html#franbazawebe17" id="id9">[FBM17]</a></dd>
 </dl>
 </li>
 </ul>
@@ -479,7 +479,7 @@ method. Currently disabled due to bad performance.</dd>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">skprocrustes.skprocrustes.ProcrustesSolver</span></code></p>
 <p>Subclass containing the call to the <code class="docutils literal"><span class="pre">eb_solver()</span></code> function 
 corresponding to the Expansion-Balance method as described in 
-<a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[3]</span></a>.</p>
+<a class="reference internal" href="index.html#bergknol84" id="id10">[tBK84]</a>.</p>
 <p>Usage example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mysolver</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">EBSolver</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">mysolver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
@@ -545,7 +545,7 @@ EBSolver constructor.</em></p>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">skprocrustes.skprocrustes.ProcrustesSolver</span></code></p>
 <p>Subclass containing the call to the <code class="docutils literal"><span class="pre">gpi_solver()</span></code> function 
 corresponding to the Generalized Power Iteration method as described in 
-<a class="reference internal" href="index.html#bibliography"><span class="std std-ref">[5]</span></a>.</p>
+<a class="reference internal" href="index.html#niezhanli17" id="id11">[NZL17]</a>.</p>
 <p>Usage example:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">mysolver</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">GPISolver</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">mysolver</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
@@ -614,11 +614,12 @@ method.</p>
 <div><div class="math">
 \[\min \lVert AXC - B\rVert_F^2  \qquad s.t. X^TX = I\]</div>
 </div></blockquote>
-<p>The method is described in references [1] and [2], and we implement a few
-variations (including a monotone version, a nonmonotone version using the 
-strategy described in [1], and a nonmonotone version using the strategy 
-described in [2]; check below for more details on how to select these 
-different algorithms).</p>
+<p>The method is described in references <a class="reference internal" href="index.html#franbaza12" id="id12">[FB12]</a> and 
+<a class="reference internal" href="index.html#franbazawebe17" id="id13">[FBM17]</a>, and we implement a few variations (including a 
+monotone version, a nonmonotone version using the strategy described in 
+<a class="reference internal" href="index.html#franbaza12" id="id14">[FB12]</a>, and a nonmonotone version using the strategy 
+described in <a class="reference internal" href="index.html#franbazawebe17" id="id15">[FBM17]</a>; check below for more details on how 
+to select these different algorithms).</p>
 <p>This function is called by <code class="docutils literal"><span class="pre">spectral_solver</span></code> from both GKBSolver and
 SPGSolver, with different parameters.</p>
 <p>Input:</p>
@@ -659,8 +660,8 @@ be reported).</dd>
 <li><dl class="first docutils">
 <dt><code class="docutils literal"><span class="pre">strategy</span></code>: <code class="docutils literal"><span class="pre">str</span></code></dt>
 <dd><code class="docutils literal"><span class="pre">monot</span></code> (Monotone strategy), <code class="docutils literal"><span class="pre">bazfr</span></code> (Nonmonotone strategy 
-described in [1]) or <code class="docutils literal"><span class="pre">newfw</span></code> (Nonmonotone strategy described 
-in [2])</dd>
+described in <a class="reference internal" href="index.html#franbaza12" id="id16">[FB12]</a>) or <code class="docutils literal"><span class="pre">newfw</span></code> (Nonmonotone strategy 
+described in <a class="reference internal" href="index.html#franbazawebe17" id="id17">[FBM17]</a>)</dd>
 </dl>
 </li>
 <li><dl class="first docutils">
@@ -710,23 +711,12 @@ in [2])</dd>
 </li>
 </ul>
 </div></blockquote>
-<p>References:</p>
-<dl class="docutils">
-<dt>[1] J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for </dt>
-<dd>minimization on closed sets with applications to minimization on 
-Stiefel manifolds, Journal of Computational and Applied Mathematics, 
-2012, 236(10): 2717–2727 &lt;<a class="reference external" href="http://dx.doi.org/10.1016/j.cam.2012.01.014">http://dx.doi.org/10.1016/j.cam.2012.01.014</a>&gt;</dd>
-<dt>[2] J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone </dt>
-<dd>algorithm for minimization on arbitrary domains with applications to 
-large-scale orthogonal Procrustes problem, Appl. Num. Math., 2017, 
-112: 51–64 &lt;<a class="reference external" href="https://doi.org/10.1016/j.apnum.2016.09.018">https://doi.org/10.1016/j.apnum.2016.09.018</a>&gt;</dd>
-</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="skprocrustes.eb_solver">
 <code class="descclassname">skprocrustes.</code><code class="descname">eb_solver</code><span class="sig-paren">(</span><em>problem</em>, <em>options</em><span class="sig-paren">)</span><a class="headerlink" href="#skprocrustes.eb_solver" title="Permalink to this definition">¶</a></dt>
-<dd><p>Expansion-Balance solver as presented in [1]</p>
+<dd><p>Expansion-Balance solver</p>
 <p>Here we consider always <span class="math">\(m=n\)</span>, <span class="math">\(p=q\)</span>, <span class="math">\(C=I\)</span>.
 Thus the problem has to be</p>
 <blockquote>
@@ -734,23 +724,13 @@ Thus the problem has to be</p>
 \[\min \lVert A_{n\times n}X_{n\times p}-B_{n\times p}\rVert_F^2 
 \qquad s.t. X^TX=I_{p\times p}    \]</div>
 </div></blockquote>
-<p>References:</p>
-<dl class="docutils">
-<dt>[1] Zhang, Du - Successive projection method for solving the</dt>
-<dd>unbalanced Procrustes problem</dd>
-<dt>[2] Green B. F., Goers J. C. - A problem with Congruence. The Annual</dt>
-<dd>Meeting of the Psychometric Society, Monterey,
-California 1979.</dd>
-<dt>[3] Ten Berge J. M. F., Konl D. L. - Orthogonal rotations to maximal</dt>
-<dd>agreement for two of more matrices of different column
-orders. Psychometrica, 1984, 49:49-55.</dd>
-</dl>
+<p>References: <a class="reference internal" href="index.html#zhandu06" id="id18">[ZD06]</a> and <a class="reference internal" href="index.html#bergknol84" id="id19">[tBK84]</a>.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="skprocrustes.gpi_solver">
 <code class="descclassname">skprocrustes.</code><code class="descname">gpi_solver</code><span class="sig-paren">(</span><em>problem</em>, <em>options</em><span class="sig-paren">)</span><a class="headerlink" href="#skprocrustes.gpi_solver" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generalized Power Iteration solver as presented in [1]</p>
+<dd><p>Generalized Power Iteration solver</p>
 <p>Here we consider always C=I.
 Thus the problem has to be</p>
 <blockquote>
@@ -758,13 +738,7 @@ Thus the problem has to be</p>
 \[\min \lVert A_{m\times n}X_{n\times p}-B_{m\times p}\rVert_F^2 
 \qquad s.t. X^TX=I_{p\times p}    \]</div>
 </div></blockquote>
-<p>References:</p>
-<dl class="docutils">
-<dt>[1] F. Nie, R. Zhang, X. Li, A generalized power iteration method for</dt>
-<dd>solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci.,
-2017, 60: 112101:1–112101:10.
-&lt;<a class="reference external" href="http://dx.doi.org/10.1007/s11432-016-9021-9">http://dx.doi.org/10.1007/s11432-016-9021-9</a>&gt;</dd>
-</dl>
+<p>References: <a class="reference internal" href="index.html#niezhanli17" id="id20">[NZL17]</a></p>
 </dd></dl>
 
 </div>
@@ -788,7 +762,7 @@ Thus the problem has to be</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="index.html" title="previous chapter">scikit-procrustes</a></li>
-      <li>Next: <a href="solvers.html" title="next chapter">Solvers</a></li>
+      <li>Next: <a href="license.html" title="next chapter">BSD 2-Clause License</a></li>
   </ul></li>
 </ul>
 </div>

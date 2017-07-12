@@ -81,37 +81,16 @@ X_{n \times p}\). Usually n \textgreater{}\textgreater{} p, which means we can s
 \chapter{Available Solvers}
 \label{\detokenize{index:available-solvers}}\label{\detokenize{index:scikit-procrustes}}\begin{itemize}
 \item {} 
-{\hyperref[\detokenize{solvers:spg}]{\sphinxcrossref{\DUrole{std,std-ref}{spg}}}}    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in %
-\begin{footnote}[1]\sphinxAtStartFootnote
-J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for minimization on closed sets with applications to minimization on Stiefel manifolds, Journal of Computational and Applied Mathematics, 2012, 236(10): 2717\textendash{}2727 \textless{}\sphinxurl{http://dx.doi.org/10.1016/j.cam.2012.01.014}\textgreater{}
-%
-\end{footnote}.
+\sphinxcode{SPGSolver}    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in \phantomsection\label{\detokenize{index:id1}}{\hyperref[\detokenize{index:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}}.
 
 \item {} 
-{\hyperref[\detokenize{solvers:gkb}]{\sphinxcrossref{\DUrole{std,std-ref}{gkb}}}}    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in %
-\begin{footnote}[2]\sphinxAtStartFootnote
-J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal Procrustes problem, Applied Numerical Mathematics, 2017, 112: 51\textendash{}64 \textless{}\sphinxurl{https://doi.org/10.1016/j.apnum.2016.09.018}\textgreater{}
-%
-\end{footnote}.
+\sphinxcode{GKBSolver}    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in \phantomsection\label{\detokenize{index:id2}}{\hyperref[\detokenize{index:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}.
 
 \item {} 
-{\hyperref[\detokenize{solvers:eb}]{\sphinxcrossref{\DUrole{std,std-ref}{eb}}}}      Expansion-Balance method, as described in %
-\begin{footnote}[3]\sphinxAtStartFootnote
-J.M.F. ten Berge and D.L. Knol, Orthogonal rotations to maximal agreement for two or more matrices of different column orders, Psychometrika 1984, 49: 49\textendash{}55 \textless{}\sphinxurl{https://doi:10.1007/BF02294205}\textgreater{}
-%
-\end{footnote}.
+\sphinxcode{EBSolver}      Expansion-Balance method, as described in \phantomsection\label{\detokenize{index:id3}}{\hyperref[\detokenize{index:bergknol84}]{\sphinxcrossref{{[}tBK84{]}}}}.
 
 \item {} 
-{\hyperref[\detokenize{solvers:gpi}]{\sphinxcrossref{\DUrole{std,std-ref}{gpi}}}}    Generalized Power Iteration for the WOPP, as described in %
-\begin{footnote}[5]\sphinxAtStartFootnote
-\begin{enumerate}
-\setcounter{enumi}{5}
-\item {} 
-Nie, R. Zhang, X. Li, A generalized power iteration method for solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci., 2017, 60: 112101:1\textendash{}112101:10. \textless{}\sphinxurl{http://dx.doi.org/10.1007/s11432-016-9021-9}\textgreater{}
-
-\end{enumerate}
-%
-\end{footnote}.
+\sphinxcode{GPISolver}    Generalized Power Iteration for the WOPP, as described in \phantomsection\label{\detokenize{index:id4}}{\hyperref[\detokenize{index:niezhanli17}]{\sphinxcrossref{{[}NZL17{]}}}}.
 
 \end{itemize}
 
@@ -131,16 +110,7 @@ using the SPG solver, for example, use
 
 where \sphinxtitleref{**kwargs} are the selected solver’s options (see the \sphinxhref{skprocrustes.html}{Module Reference} for more details).
 
-To use the package to solve one of the three predefined problems (as described in %
-\begin{footnote}[4]\sphinxAtStartFootnote
-\begin{enumerate}
-\setcounter{enumi}{25}
-\item {} 
-Zhang, K. Du, Successive projection method for solving the unbalanced Procrustes problem, Sci. China Ser. A, 2006, 49: 971\textendash{}986.
-
-\end{enumerate}
-%
-\end{footnote}), using the GKB solver, for example, use
+To use the package to solve one of the three predefined problems (as described in \phantomsection\label{\detokenize{index:id5}}{\hyperref[\detokenize{index:zhandu06}]{\sphinxcrossref{{[}ZD06{]}}}}), using the GKB solver, for example, use
 
 \begin{sphinxVerbatim}[commandchars=\\\{\}]
 \PYG{g+gp}{\PYGZgt{}\PYGZgt{}\PYGZgt{} }\PYG{k+kn}{import} \PYG{n+nn}{skprocrustes} \PYG{k}{as} \PYG{n+nn}{skp}
@@ -152,7 +122,9 @@ Zhang, K. Du, Successive projection method for solving the unbalanced Procrustes
 
 
 \chapter{References}
-\label{\detokenize{index:references}}\label{\detokenize{index:bibliography}}
+\label{\detokenize{index:references}}
+
+
 
 \chapter{Installation}
 \label{\detokenize{index:installation}}
@@ -195,7 +167,7 @@ installed:
 \label{\detokenize{index:contents}}
 
 \section{skprocrustes package}
-\label{\detokenize{skprocrustes:skprocrustes-package}}\label{\detokenize{skprocrustes::doc}}
+\label{\detokenize{skprocrustes::doc}}\label{\detokenize{skprocrustes:skprocrustes-package}}
 
 \subsection{Module contents}
 \label{\detokenize{skprocrustes:module-skprocrustes}}\label{\detokenize{skprocrustes:module-contents}}\index{skprocrustes (module)}\index{ProcrustesProblem (class in skprocrustes)}
@@ -234,7 +206,7 @@ C_{p\times q}\) and \(X_{n\times p}\).
 
 \item[{\sphinxstyleemphasis{(optional)} \sphinxcode{problemnumber}: int}] \leavevmode
 Can be \sphinxcode{1}, \sphinxcode{2} or \sphinxcode{3}, and selects one of the predefined
-problems as described in reference {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}4{]}}}}}.
+problems as described in reference \phantomsection\label{\detokenize{skprocrustes:id1}}{\hyperref[\detokenize{skprocrustes:zhandu06}]{\sphinxcrossref{{[}ZD06{]}}}}.
 (for more details, see the documentation for \sphinxcode{\_setproblem})
 
 \item[{\sphinxstyleemphasis{(optional)} \sphinxcode{matrices}: list of ndarrays}] \leavevmode
@@ -276,7 +248,7 @@ Method to effectively build A, B, and C if they are not already given.
 \sphinxstyleemphasis{This method should not be called directly; it is called by the 
 ProcrustesProblem constructor.}
 
-Available problems are all based on reference {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}4{]}}}}}:
+Available problems are all based on reference \phantomsection\label{\detokenize{skprocrustes:id2}}{\hyperref[\detokenize{skprocrustes:zhandu06}]{\sphinxcrossref{{[}ZD06{]}}}}:
 All problems have the form
 \begin{quote}
 \begin{equation*}
@@ -482,7 +454,7 @@ Bases: \sphinxcode{skprocrustes.skprocrustes.ProcrustesSolver}
 
 Subclass containing the call to the \sphinxcode{spectral\_setup()} function 
 corresponding to the Spectral Projected Gradient solver described in 
-{\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}1{]}}}}} and {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}2{]}}}}}.
+\phantomsection\label{\detokenize{skprocrustes:id3}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}} and \phantomsection\label{\detokenize{skprocrustes:id4}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}.
 
 Usage example:
 
@@ -511,13 +483,13 @@ monotone trust region
 
 \item {} \begin{description}
 \item[{\sphinxcode{"bazfr"}}] \leavevmode{[}{]}
-nonmonotone method according to {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}1{]}}}}}
+nonmonotone method according to \phantomsection\label{\detokenize{skprocrustes:id5}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}}
 
 \end{description}
 
 \item {} \begin{description}
 \item[{\sphinxcode{"newfw"}}] \leavevmode{[}{]}
-nonmonotone method according to {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}2{]}}}}}
+nonmonotone method according to \phantomsection\label{\detokenize{skprocrustes:id6}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}
 
 \end{description}
 
@@ -604,7 +576,7 @@ Bases: \sphinxcode{skprocrustes.skprocrustes.SPGSolver}
 Subclass containing the call to the \sphinxcode{spectral\_setup()} function 
 corresponding to the Spectral Projected Gradient Method using 
 incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in 
-{\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}2{]}}}}}. This class extends the \sphinxcode{SPGSolver} class,
+\phantomsection\label{\detokenize{skprocrustes:id7}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}. This class extends the \sphinxcode{SPGSolver} class,
 with some variation in the input and output parameters.
 
 Usage example:
@@ -634,13 +606,13 @@ monotone trust region
 
 \item {} \begin{description}
 \item[{\sphinxcode{"bazfr"}}] \leavevmode{[}{]}
-nonmonotone method according to {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}1{]}}}}}
+nonmonotone method according to \phantomsection\label{\detokenize{skprocrustes:id8}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}}
 
 \end{description}
 
 \item {} \begin{description}
 \item[{\sphinxcode{"newfw"}}] \leavevmode{[}{]}
-nonmonotone method according to {\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}2{]}}}}}
+nonmonotone method according to \phantomsection\label{\detokenize{skprocrustes:id9}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}
 
 \end{description}
 
@@ -720,7 +692,7 @@ Bases: \sphinxcode{skprocrustes.skprocrustes.ProcrustesSolver}
 
 Subclass containing the call to the \sphinxcode{eb\_solver()} function 
 corresponding to the Expansion-Balance method as described in 
-{\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}3{]}}}}}.
+\phantomsection\label{\detokenize{skprocrustes:id10}}{\hyperref[\detokenize{skprocrustes:bergknol84}]{\sphinxcrossref{{[}tBK84{]}}}}.
 
 Usage example:
 
@@ -808,7 +780,7 @@ Bases: \sphinxcode{skprocrustes.skprocrustes.ProcrustesSolver}
 
 Subclass containing the call to the \sphinxcode{gpi\_solver()} function 
 corresponding to the Generalized Power Iteration method as described in 
-{\hyperref[\detokenize{index:bibliography}]{\sphinxcrossref{\DUrole{std,std-ref}{{[}5{]}}}}}.
+\phantomsection\label{\detokenize{skprocrustes:id11}}{\hyperref[\detokenize{skprocrustes:niezhanli17}]{\sphinxcrossref{{[}NZL17{]}}}}.
 
 Usage example:
 
@@ -899,11 +871,12 @@ Nonmonotone Spectral Projected Gradient solver for problems of the type
 \begin{split}\min \lVert AXC - B\rVert_F^2  \qquad s.t. X^TX = I\end{split}
 \end{equation*}\end{quote}
 
-The method is described in references {[}1{]} and {[}2{]}, and we implement a few
-variations (including a monotone version, a nonmonotone version using the 
-strategy described in {[}1{]}, and a nonmonotone version using the strategy 
-described in {[}2{]}; check below for more details on how to select these 
-different algorithms).
+The method is described in references \phantomsection\label{\detokenize{skprocrustes:id12}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}} and 
+\phantomsection\label{\detokenize{skprocrustes:id13}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}, and we implement a few variations (including a 
+monotone version, a nonmonotone version using the strategy described in 
+\phantomsection\label{\detokenize{skprocrustes:id14}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}}, and a nonmonotone version using the strategy 
+described in \phantomsection\label{\detokenize{skprocrustes:id15}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}}; check below for more details on how 
+to select these different algorithms).
 
 This function is called by \sphinxcode{spectral\_solver} from both GKBSolver and
 SPGSolver, with different parameters.
@@ -956,8 +929,8 @@ Maximum number of iterations allowed
 \item {} \begin{description}
 \item[{\sphinxcode{strategy}: \sphinxcode{str}}] \leavevmode
 \sphinxcode{monot} (Monotone strategy), \sphinxcode{bazfr} (Nonmonotone strategy 
-described in {[}1{]}) or \sphinxcode{newfw} (Nonmonotone strategy described 
-in {[}2{]})
+described in \phantomsection\label{\detokenize{skprocrustes:id16}}{\hyperref[\detokenize{skprocrustes:franbaza12}]{\sphinxcrossref{{[}FB12{]}}}}) or \sphinxcode{newfw} (Nonmonotone strategy 
+described in \phantomsection\label{\detokenize{skprocrustes:id17}}{\hyperref[\detokenize{skprocrustes:franbazawebe17}]{\sphinxcrossref{{[}FBM17{]}}}})
 
 \end{description}
 
@@ -1015,27 +988,13 @@ Final number of outer iterations performed.
 
 \end{itemize}
 
-References:
-\begin{description}
-\item[{{[}1{]} J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for }] \leavevmode
-minimization on closed sets with applications to minimization on 
-Stiefel manifolds, Journal of Computational and Applied Mathematics, 
-2012, 236(10): 2717\textendash{}2727 \textless{}\sphinxurl{http://dx.doi.org/10.1016/j.cam.2012.01.014}\textgreater{}
-
-\item[{{[}2{]} J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone }] \leavevmode
-algorithm for minimization on arbitrary domains with applications to 
-large-scale orthogonal Procrustes problem, Appl. Num. Math., 2017, 
-112: 51\textendash{}64 \textless{}\sphinxurl{https://doi.org/10.1016/j.apnum.2016.09.018}\textgreater{}
-
-\end{description}
-
 \end{fulllineitems}
 
 \index{eb\_solver() (in module skprocrustes)}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{skprocrustes:skprocrustes.eb_solver}}\pysiglinewithargsret{\sphinxcode{skprocrustes.}\sphinxbfcode{eb\_solver}}{\emph{problem}, \emph{options}}{}
-Expansion-Balance solver as presented in {[}1{]}
+Expansion-Balance solver
 
 Here we consider always \(m=n\), \(p=q\), \(C=I\).
 Thus the problem has to be
@@ -1045,20 +1004,7 @@ Thus the problem has to be
 \qquad s.t. X^TX=I_{p\times p}    \end{split}
 \end{equation*}\end{quote}
 
-References:
-\begin{description}
-\item[{{[}1{]} Zhang, Du - Successive projection method for solving the}] \leavevmode
-unbalanced Procrustes problem
-
-\item[{{[}2{]} Green B. F., Goers J. C. - A problem with Congruence. The Annual}] \leavevmode
-Meeting of the Psychometric Society, Monterey,
-California 1979.
-
-\item[{{[}3{]} Ten Berge J. M. F., Konl D. L. - Orthogonal rotations to maximal}] \leavevmode
-agreement for two of more matrices of different column
-orders. Psychometrica, 1984, 49:49-55.
-
-\end{description}
+References: \phantomsection\label{\detokenize{skprocrustes:id18}}{\hyperref[\detokenize{skprocrustes:zhandu06}]{\sphinxcrossref{{[}ZD06{]}}}} and \phantomsection\label{\detokenize{skprocrustes:id19}}{\hyperref[\detokenize{skprocrustes:bergknol84}]{\sphinxcrossref{{[}tBK84{]}}}}.
 
 \end{fulllineitems}
 
@@ -1066,7 +1012,7 @@ orders. Psychometrica, 1984, 49:49-55.
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{skprocrustes:skprocrustes.gpi_solver}}\pysiglinewithargsret{\sphinxcode{skprocrustes.}\sphinxbfcode{gpi\_solver}}{\emph{problem}, \emph{options}}{}
-Generalized Power Iteration solver as presented in {[}1{]}
+Generalized Power Iteration solver
 
 Here we consider always C=I.
 Thus the problem has to be
@@ -1076,65 +1022,11 @@ Thus the problem has to be
 \qquad s.t. X^TX=I_{p\times p}    \end{split}
 \end{equation*}\end{quote}
 
-References:
-\begin{description}
-\item[{{[}1{]} F. Nie, R. Zhang, X. Li, A generalized power iteration method for}] \leavevmode
-solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci.,
-2017, 60: 112101:1\textendash{}112101:10.
-\textless{}\sphinxurl{http://dx.doi.org/10.1007/s11432-016-9021-9}\textgreater{}
-
-\end{description}
+References: \phantomsection\label{\detokenize{skprocrustes:id20}}{\hyperref[\detokenize{skprocrustes:niezhanli17}]{\sphinxcrossref{{[}NZL17{]}}}}
 
 \end{fulllineitems}
 
 
-
-\section{Solvers}
-\label{\detokenize{solvers:solvers}}\label{\detokenize{solvers::doc}}
-
-\subsection{GKB Solver}
-\label{\detokenize{solvers:gkb-solver}}\label{\detokenize{solvers:gkb}}
-Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, using incomplete Golub-Kahan Bidiagonalization as described in %
-\begin{footnote}[2]\sphinxAtStartFootnote
-J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal Procrustes problem, Applied Numerical Mathematics, 112: 51\textendash{}64 2017 \textless{}\sphinxurl{https://doi.org/10.1016/j.apnum.2016.09.018}\textgreater{}
-%
-\end{footnote}.
-
-
-\subsection{SPG Solver}
-\label{\detokenize{solvers:spg}}\label{\detokenize{solvers:spg-solver}}
-Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in %
-\begin{footnote}[1]\sphinxAtStartFootnote
-J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for minimization on closed sets with applications to minimization on Stiefel manifolds, Journal of Computational and Applied Mathematics, 236(10): 2717\textendash{}2727, 2012 \textless{}\sphinxurl{http://dx.doi.org/10.1016/j.cam.2012.01.014}\textgreater{}
-%
-\end{footnote}, \sphinxfootnotemark[2].
-
-
-\subsection{EB Solver}
-\label{\detokenize{solvers:eb}}\label{\detokenize{solvers:eb-solver}}
-Expansion-balance solver, as described in %
-\begin{footnote}[3]\sphinxAtStartFootnote
-J.M.F. ten Berge and D.L. Knol, Orthogonal rotations to maximal agreement for two or more matrices of different column orders, Psychometrika 49: 49. \textless{}\sphinxurl{https://doi:10.1007/BF02294205}\textgreater{}
-%
-\end{footnote}.
-
-
-\subsection{GPI Solver}
-\label{\detokenize{solvers:gpi}}\label{\detokenize{solvers:gpi-solver}}
-Generalized Power Iteration solver for the WOPP, as described in %
-\begin{footnote}[5]\sphinxAtStartFootnote
-\begin{enumerate}
-\setcounter{enumi}{5}
-\item {} 
-Nie, R. Zhang, X. Li, A generalized power iteration method for solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci., 2017, 60: 112101:1\textendash{}112101:10. \textless{}\sphinxurl{http://dx.doi.org/10.1007/s11432-016-9021-9}\textgreater{}
-
-\end{enumerate}
-%
-\end{footnote}.
-
-
-\subsection{References}
-\label{\detokenize{solvers:references}}
 
 \section{BSD 2-Clause License}
 \label{\detokenize{license:bsd-2-clause-license}}\label{\detokenize{license::doc}}
@@ -1190,6 +1082,24 @@ Melissa Weber Mendonça
 \DUrole{xref,std,std-ref}{search}
 
 \end{itemize}
+
+\begin{sphinxthebibliography}{FBM17}
+\bibitem[FB12]{\detokenize{FB12}}{\phantomsection\label{\detokenize{index:franbaza12}} 
+J. B. Francisco and F. S. Viloche Bazán. Nonmonotone algorithm for minimization on closed sets with applications to minimization on stiefel manifolds. \sphinxstyleemphasis{J. Comp. Appl. Math.}, 236(10):2717\textendash{}2727, 2012. \sphinxhref{https://doi.org/10.1016/j.cam.2012.01.014}{doi:10.1016/j.cam.2012.01.014}.
+}
+\bibitem[FBM17]{\detokenize{FBM17}}{\phantomsection\label{\detokenize{index:franbazawebe17}} 
+J. B. Francisco, F. S. Viloche Bazán, and M. Weber Mendonça. Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal procrustes problem. \sphinxstyleemphasis{Appl. Num. Math.}, 112:51\textendash{}64, 2017. \sphinxhref{https://doi.org/10.1016/j.apnum.2016.09.018}{doi:10.1016/j.apnum.2016.09.018}.
+}
+\bibitem[NZL17]{\detokenize{NZL17}}{\phantomsection\label{\detokenize{index:niezhanli17}} 
+F. Nie, R. Zhang, and X. Li. A generalized power iteration method for solving quadratic problem on the stiefel manifold. \sphinxstyleemphasis{Sci. China Inf. Sci.}, 60:112101:1\textendash{}112101:10, 2017. \sphinxhref{https://doi.org/10.1007/s11432-016-9021-9}{doi:10.1007/s11432-016-9021-9}.
+}
+\bibitem[tBK84]{\detokenize{tBK84}}{\phantomsection\label{\detokenize{index:bergknol84}} 
+J. M. F. ten Berge and D. L. Knol. Orthogonal rotations to maximal agreement for two or more matrices of different column orders. \sphinxstyleemphasis{Psychometrika}, 49:49\textendash{}55, 1984. \sphinxhref{https://doi.org/10.1007/BF02294205}{doi:10.1007/BF02294205}.
+}
+\bibitem[ZD06]{\detokenize{ZD06}}{\phantomsection\label{\detokenize{index:zhandu06}} 
+Z. Zhang and K. Du. Successive projection method for solving the unbalanced procrustes problem. \sphinxstyleemphasis{Sci. China Ser. A}, 49:971\textendash{}986, 2006. \sphinxhref{https://doi.org/10.1007/s11425-006-0971-2}{doi:10.1007/s11425-006-0971-2}.
+}
+\end{sphinxthebibliography}
 
 
 \renewcommand{\indexname}{Python Module Index}

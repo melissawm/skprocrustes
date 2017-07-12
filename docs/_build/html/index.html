@@ -52,10 +52,10 @@ X_{n \times p}\)</span>. Usually n &gt;&gt; p, which means we can solve unbalanc
 <div class="section" id="available-solvers">
 <h2>Available Solvers<a class="headerlink" href="#available-solvers" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference internal" href="solvers.html#spg"><span class="std std-ref">spg</span></a>    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in <a class="footnote-reference" href="#id6" id="id1">[1]</a>.</li>
-<li><a class="reference internal" href="solvers.html#gkb"><span class="std std-ref">gkb</span></a>    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in <a class="footnote-reference" href="#id7" id="id2">[2]</a>.</li>
-<li><a class="reference internal" href="solvers.html#eb"><span class="std std-ref">eb</span></a>      Expansion-Balance method, as described in <a class="footnote-reference" href="#id8" id="id3">[3]</a>.</li>
-<li><a class="reference internal" href="solvers.html#gpi"><span class="std std-ref">gpi</span></a>    Generalized Power Iteration for the WOPP, as described in <a class="footnote-reference" href="#id10" id="id4">[5]</a>.</li>
+<li><code class="docutils literal"><span class="pre">SPGSolver</span></code>    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in <a class="reference internal" href="#franbaza12" id="id1">[FB12]</a>.</li>
+<li><code class="docutils literal"><span class="pre">GKBSolver</span></code>    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in <a class="reference internal" href="#franbazawebe17" id="id2">[FBM17]</a>.</li>
+<li><code class="docutils literal"><span class="pre">EBSolver</span></code>      Expansion-Balance method, as described in <a class="reference internal" href="#bergknol84" id="id3">[tBK84]</a>.</li>
+<li><code class="docutils literal"><span class="pre">GPISolver</span></code>    Generalized Power Iteration for the WOPP, as described in <a class="reference internal" href="#niezhanli17" id="id4">[NZL17]</a>.</li>
 </ul>
 </div>
 <div class="section" id="usage">
@@ -70,7 +70,7 @@ using the SPG solver, for example, use</p>
 </pre></div>
 </div>
 <p>where <cite>**kwargs</cite> are the selected solver’s options (see the <a class="reference external" href="skprocrustes.html">Module Reference</a> for more details).</p>
-<p>To use the package to solve one of the three predefined problems (as described in <a class="footnote-reference" href="#id9" id="id5">[4]</a>), using the GKB solver, for example, use</p>
+<p>To use the package to solve one of the three predefined problems (as described in <a class="reference internal" href="#zhandu06" id="id5">[ZD06]</a>), using the GKB solver, for example, use</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">skprocrustes</span> <span class="k">as</span> <span class="nn">skp</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">problem</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">ProcrustesProblem</span><span class="p">((</span><span class="n">m</span><span class="p">,</span><span class="n">n</span><span class="p">,</span><span class="n">p</span><span class="p">,</span><span class="n">q</span><span class="p">),</span>     <span class="c1"># tuple</span>
 <span class="go">                                    problemnumber=1)</span>
@@ -80,43 +80,38 @@ using the SPG solver, for example, use</p>
 </div>
 </div>
 <div class="section" id="references">
-<span id="bibliography"></span><h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
-<table class="docutils footnote" frame="void" id="id6" rules="none">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<p id="bibtex-bibliography-index-0"><table class="docutils citation" frame="void" id="franbaza12" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for minimization on closed sets with applications to minimization on Stiefel manifolds, Journal of Computational and Applied Mathematics, 2012, 236(10): 2717–2727 &lt;<a class="reference external" href="http://dx.doi.org/10.1016/j.cam.2012.01.014">http://dx.doi.org/10.1016/j.cam.2012.01.014</a>&gt;</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id1">[FB12]</a></td><td>J.&nbsp;B. Francisco and F.&nbsp;S.&nbsp;Viloche Bazán. Nonmonotone algorithm for minimization on closed sets with applications to minimization on stiefel manifolds. <em>J. Comp. Appl. Math.</em>, 236(10):2717–2727, 2012. <a class="reference external" href="https://doi.org/10.1016/j.cam.2012.01.014">doi:10.1016/j.cam.2012.01.014</a>.</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id7" rules="none">
+<table class="docutils citation" frame="void" id="franbazawebe17" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal Procrustes problem, Applied Numerical Mathematics, 2017, 112: 51–64 &lt;<a class="reference external" href="https://doi.org/10.1016/j.apnum.2016.09.018">https://doi.org/10.1016/j.apnum.2016.09.018</a>&gt;</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id2">[FBM17]</a></td><td>J.&nbsp;B. Francisco, F.&nbsp;S.&nbsp;Viloche Bazán, and M.&nbsp;Weber Mendonça. Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal procrustes problem. <em>Appl. Num. Math.</em>, 112:51–64, 2017. <a class="reference external" href="https://doi.org/10.1016/j.apnum.2016.09.018">doi:10.1016/j.apnum.2016.09.018</a>.</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id8" rules="none">
+<table class="docutils citation" frame="void" id="niezhanli17" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>J.M.F. ten Berge and D.L. Knol, Orthogonal rotations to maximal agreement for two or more matrices of different column orders, Psychometrika 1984, 49: 49–55 &lt;<a class="reference external" href="https://doi:10.1007/BF02294205">https://doi:10.1007/BF02294205</a>&gt;</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id4">[NZL17]</a></td><td>F.&nbsp;Nie, R.&nbsp;Zhang, and X.&nbsp;Li. A generalized power iteration method for solving quadratic problem on the stiefel manifold. <em>Sci. China Inf. Sci.</em>, 60:112101:1–112101:10, 2017. <a class="reference external" href="https://doi.org/10.1007/s11432-016-9021-9">doi:10.1007/s11432-016-9021-9</a>.</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id9" rules="none">
+<table class="docutils citation" frame="void" id="bergknol84" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id5">[4]</a></td><td><ol class="first last upperalpha simple" start="26">
-<li>Zhang, K. Du, Successive projection method for solving the unbalanced Procrustes problem, Sci. China Ser. A, 2006, 49: 971–986.</li>
-</ol>
-</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id3">[tBK84]</a></td><td>J.&nbsp;M.&nbsp;F. ten Berge and D.&nbsp;L. Knol. Orthogonal rotations to maximal agreement for two or more matrices of different column orders. <em>Psychometrika</em>, 49:49–55, 1984. <a class="reference external" href="https://doi.org/10.1007/BF02294205">doi:10.1007/BF02294205</a>.</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id10" rules="none">
+<table class="docutils citation" frame="void" id="zhandu06" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[5]</a></td><td><ol class="first last upperalpha simple" start="6">
-<li>Nie, R. Zhang, X. Li, A generalized power iteration method for solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci., 2017, 60: 112101:1–112101:10. &lt;<a class="reference external" href="http://dx.doi.org/10.1007/s11432-016-9021-9">http://dx.doi.org/10.1007/s11432-016-9021-9</a>&gt;</li>
-</ol>
-</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id5">[ZD06]</a></td><td>Z.&nbsp;Zhang and K.&nbsp;Du. Successive projection method for solving the unbalanced procrustes problem. <em>Sci. China Ser. A</em>, 49:971–986, 2006. <a class="reference external" href="https://doi.org/10.1007/s11425-006-0971-2">doi:10.1007/s11425-006-0971-2</a>.</td></tr>
 </tbody>
 </table>
+</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
@@ -149,14 +144,6 @@ installed:</p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="skprocrustes.html">Module Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="skprocrustes.html#module-skprocrustes">Module contents</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="solvers.html">Solvers</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="solvers.html#gkb-solver">GKB Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solvers.html#spg-solver">SPG Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solvers.html#eb-solver">EB Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solvers.html#gpi-solver">GPI Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="solvers.html#references">References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>

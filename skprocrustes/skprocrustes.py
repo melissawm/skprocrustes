@@ -72,7 +72,7 @@ class ProcrustesProblem:
        
        *(optional)* ``problemnumber``: int
           Can be ``1``, ``2`` or ``3``, and selects one of the predefined
-          problems as described in reference :ref:`[4] <bibliography>`.
+          problems as described in reference :cite:`ZhanDu06`.
           (for more details, see the documentation for ``_setproblem``)
 
        *(optional)* ``matrices``: list of ndarrays
@@ -129,7 +129,7 @@ class ProcrustesProblem:
         *This method should not be called directly; it is called by the 
         ProcrustesProblem constructor.*
 
-        Available problems are all based on reference :ref:`[4] <bibliography>`:
+        Available problems are all based on reference :cite:`ZhanDu06`:
         All problems have the form 
 
            .. math::
@@ -192,18 +192,20 @@ class ProcrustesProblem:
 
             # Predefined examples for testing and benchmarking.
             # Reference:
-            # [1] Z. Zhang, K. Du, Successive projection method for solving
+            #
+            # [ZhanDu06]
+            #     Z. Zhang, K. Du, Successive projection method for solving
             #     the unbalanced Procrustes problem, Sci. China Ser. A, 2006,
             #     49: 971–986.
 
             if problemnumber == 1:
-                # Zhang & Du [1] - Example 1
+                # [ZhanDu06] - Example 1
                 Sigmaorig = 10.0 + 2.0*np.random.rand(n)
                 Sigma = np.zeros((m,n))
                 Sigma[0:n, 0:n] = np.diag(Sigmaorig)
 
             elif problemnumber == 2:
-                # Zhang & Du [1] - Example 3
+                # [ZhanDu06] - Example 3
                 Sigmaorig = np.zeros(min(m,n))
                 for i in range(0,min(m,n)):
                     Sigmaorig[i] = 1.0 + (99.0*float(i-1))/(float(n)-1.0) \
@@ -212,7 +214,7 @@ class ProcrustesProblem:
                 Sigma[0:n, 0:n] = np.diag(Sigmaorig)
 
             elif problemnumber == 3:
-                # Zhang & Du [1] - Example 4
+                # [ZhanDu06] - Example 4
                 #
                 # Only works if n = 50, n = 95, n = 500 or n = 1000
                 #
@@ -413,7 +415,7 @@ class SPGSolver(ProcrustesSolver):
     """
     Subclass containing the call to the ``spectral_setup()`` function 
     corresponding to the Spectral Projected Gradient solver described in 
-    :ref:`[1] <bibliography>` and :ref:`[2] <bibliography>`.
+    :cite:`FranBaza12` and :cite:`FranBazaWebe17`.
 
     Usage example:
 
@@ -430,9 +432,9 @@ class SPGSolver(ProcrustesSolver):
           - ``"monotone"``: 
              monotone trust region
           - ``"bazfr"`` : 
-             nonmonotone method according to :ref:`[1] <bibliography>`
+             nonmonotone method according to :cite:`FranBaza12`
           - ``"newfw"`` : 
-             nonmonotone method according to :ref:`[2] <bibliography>`
+             nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
        - ``maxiter``: (*default*: ``2000``)
@@ -575,7 +577,7 @@ class GKBSolver(SPGSolver):
     Subclass containing the call to the ``spectral_setup()`` function 
     corresponding to the Spectral Projected Gradient Method using 
     incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in 
-    :ref:`[2] <bibliography>`. This class extends the ``SPGSolver`` class,
+    :cite:`FranBazaWebe17`. This class extends the ``SPGSolver`` class,
     with some variation in the input and output parameters.
 
     Usage example:
@@ -593,9 +595,9 @@ class GKBSolver(SPGSolver):
           - ``"monotone"``: 
              monotone trust region
           - ``"bazfr"`` : 
-             nonmonotone method according to :ref:`[1] <bibliography>`
+             nonmonotone method according to :cite:`FranBaza12`
           - ``"newfw"`` : 
-             nonmonotone method according to :ref:`[2] <bibliography>`
+             nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
        - ``maxiter``: (*default*: ``2000``)
@@ -673,7 +675,7 @@ class EBSolver(ProcrustesSolver):
     """
     Subclass containing the call to the ``eb_solver()`` function 
     corresponding to the Expansion-Balance method as described in 
-    :ref:`[3] <bibliography>`. 
+    :cite:`BergKnol84`. 
 
     Usage example:
 
@@ -811,7 +813,7 @@ class GPISolver(ProcrustesSolver):
     """
     Subclass containing the call to the ``gpi_solver()`` function 
     corresponding to the Generalized Power Iteration method as described in 
-    :ref:`[5] <bibliography>`. 
+    :cite:`NieZhanLi17`. 
 
     Usage example:
 
@@ -1172,11 +1174,12 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
           \\min \\lVert AXC - B\\rVert_F^2  \\qquad s.t. X^TX = I
 
-    The method is described in references [1] and [2], and we implement a few
-    variations (including a monotone version, a nonmonotone version using the 
-    strategy described in [1], and a nonmonotone version using the strategy 
-    described in [2]; check below for more details on how to select these 
-    different algorithms).
+    The method is described in references :cite:`FranBaza12` and 
+    :cite:`FranBazaWebe17`, and we implement a few variations (including a 
+    monotone version, a nonmonotone version using the strategy described in 
+    :cite:`FranBaza12`, and a nonmonotone version using the strategy 
+    described in :cite:`FranBazaWebe17`; check below for more details on how 
+    to select these different algorithms).
 
     This function is called by ``spectral_solver`` from both GKBSolver and
     SPGSolver, with different parameters.
@@ -1203,8 +1206,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
              Maximum number of iterations allowed
           - ``strategy``: ``str``
              ``monot`` (Monotone strategy), ``bazfr`` (Nonmonotone strategy 
-             described in [1]) or ``newfw`` (Nonmonotone strategy described 
-             in [2])
+             described in :cite:`FranBaza12`) or ``newfw`` (Nonmonotone strategy 
+             described in :cite:`FranBazaWebe17`)
           - ``verbose``: ``int``
              Can take values in (0,1,2,3)
           - ``gtol``: ``float``
@@ -1222,17 +1225,6 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
           Criticality measure at final iterate
        - ``outer``: ``int``
           Final number of outer iterations performed.
-
-    References:
-
-    [1] J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for 
-        minimization on closed sets with applications to minimization on 
-        Stiefel manifolds, Journal of Computational and Applied Mathematics, 
-        2012, 236(10): 2717--2727 <http://dx.doi.org/10.1016/j.cam.2012.01.014>
-    [2] J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone 
-        algorithm for minimization on arbitrary domains with applications to 
-        large-scale orthogonal Procrustes problem, Appl. Num. Math., 2017, 
-        112: 51--64 <https://doi.org/10.1016/j.apnum.2016.09.018>
     """
     
     # Setup
@@ -1742,7 +1734,7 @@ def optimality(A, C, X, R):
 def eb_solver(problem, options):
     
     """
-    Expansion-Balance solver as presented in [1]
+    Expansion-Balance solver
 
     Here we consider always :math:`m=n`, :math:`p=q`, :math:`C=I`.
     Thus the problem has to be
@@ -1752,16 +1744,7 @@ def eb_solver(problem, options):
           \\min \\lVert A_{n\\times n}X_{n\\times p}-B_{n\\times p}\\rVert_F^2 
           \\qquad s.t. X^TX=I_{p\\times p}    
     
-    References:
-    
-    [1] Zhang, Du - Successive projection method for solving the
-                    unbalanced Procrustes problem
-    [2] Green B. F., Goers J. C. - A problem with Congruence. The Annual
-                    Meeting of the Psychometric Society, Monterey,
-                    California 1979.
-    [3] Ten Berge J. M. F., Konl D. L. - Orthogonal rotations to maximal
-                    agreement for two of more matrices of different column
-                    orders. Psychometrica, 1984, 49:49-55.
+    References: :cite:`ZhanDu06` and :cite:`BergKnol84`.
     """
 
     problem.stats["nbiter"] = 0
@@ -1779,10 +1762,10 @@ def eb_solver(problem, options):
     # From [1], p. 973:
     # "The initial guess G(0) can be a solution to the balance problem
     # min norm(AG-[B, Bhat], 'fro') s. t. G'*G=I
-    # with an expansion [B, Bhat] of B. In ref. [2], Bhat was simply set to
-    # be zero or a randomly chosen matrix. A better initial guess
+    # with an expansion [B, Bhat] of B. In ref. [BergKnol84], Bhat was simply
+    # set to be zero or a randomly chosen matrix. A better initial guess
     # Bhat = AE
-    # was suggested in ref. [3] with E the eigenvector matrix of A.T*A
+    # was suggested in ref. [ZhanDu06] with E the eigenvector matrix of A.T*A
     # corresponding to its n-k smallest eigenvalues."
         
     #G(n,n) = [X(n,p), H(n,n-p)]
@@ -1864,7 +1847,7 @@ def eb_solver(problem, options):
 def gpi_solver(problem, options):
 
     """
-    Generalized Power Iteration solver as presented in [1]
+    Generalized Power Iteration solver
 
     Here we consider always C=I.
     Thus the problem has to be
@@ -1874,12 +1857,7 @@ def gpi_solver(problem, options):
           \\min \\lVert A_{m\\times n}X_{n\\times p}-B_{m\\times p}\\rVert_F^2 
           \\qquad s.t. X^TX=I_{p\\times p}    
 
-    References:
-    
-    [1] F. Nie, R. Zhang, X. Li, A generalized power iteration method for
-        solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci.,
-        2017, 60: 112101:1--112101:10.
-        <http://dx.doi.org/10.1007/s11432-016-9021-9>
+    References: :cite:`NieZhanLi17`
     """
 
     problem.stats["nbiter"] = 0

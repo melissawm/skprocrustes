@@ -14,10 +14,10 @@ X_{n \times p}`. Usually n >> p, which means we can solve unbalanced problems.
 Available Solvers
 =================
 
-* :ref:`spg <spg>`    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in [1]_.
-* :ref:`gkb <gkb>`    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in [2]_.
-* :ref:`eb <eb>`      Expansion-Balance method, as described in [3]_.
-* :ref:`gpi <gpi>`    Generalized Power Iteration for the WOPP, as described in [5]_.
+* ``SPGSolver``    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in :cite:`FranBaza12`.
+* ``GKBSolver``    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in :cite:`FranBazaWebe17`.
+* ``EBSolver``      Expansion-Balance method, as described in :cite:`BergKnol84`.
+* ``GPISolver``    Generalized Power Iteration for the WOPP, as described in :cite:`NieZhanLi17`.
      
 Usage
 =====
@@ -33,7 +33,7 @@ using the SPG solver, for example, use
 
 where `**kwargs` are the selected solver's options (see the `Module Reference <skprocrustes.html>`_ for more details).
 
-To use the package to solve one of the three predefined problems (as described in [4]_), using the GKB solver, for example, use
+To use the package to solve one of the three predefined problems (as described in :cite:`ZhanDu06`), using the GKB solver, for example, use
 
     >>> import skprocrustes as skp
     >>> problem = skp.ProcrustesProblem((m,n,p,q),     # tuple
@@ -41,18 +41,10 @@ To use the package to solve one of the three predefined problems (as described i
     >>> mysolver = skp.GKBSolver(**kwargs)
     >>> result = mysolver.solve(problem)
 
-    
-.. _bibliography:
-
 References
 ==========
-
-.. [1] J.B. Francisco, F.S. Viloche Bazán, Nonmonotone algorithm for minimization on closed sets with applications to minimization on Stiefel manifolds, Journal of Computational and Applied Mathematics, 2012, 236(10): 2717--2727 <http://dx.doi.org/10.1016/j.cam.2012.01.014>
-.. [2] J.B. Francisco, F.S. Viloche Bazán and M. Weber Mendonça, Non-monotone algorithm for minimization on arbitrary domains with applications to large-scale orthogonal Procrustes problem, Applied Numerical Mathematics, 2017, 112: 51--64 <https://doi.org/10.1016/j.apnum.2016.09.018>
-.. [3] J.M.F. ten Berge and D.L. Knol, Orthogonal rotations to maximal agreement for two or more matrices of different column orders, Psychometrika 1984, 49: 49--55 <https://doi:10.1007/BF02294205>
-.. [4] Z. Zhang, K. Du, Successive projection method for solving the unbalanced Procrustes problem, Sci. China Ser. A, 2006, 49: 971–986.
-.. [5] F. Nie, R. Zhang, X. Li, A generalized power iteration method for solving quadratic problem on the Stiefel manifold, Sci. China Inf. Sci., 2017, 60: 112101:1--112101:10. <http://dx.doi.org/10.1007/s11432-016-9021-9>
-
+    
+.. bibliography:: references.bib
 
 Installation
 ============
@@ -85,7 +77,6 @@ Contents
    :maxdepth: 2
 	      
    Module Reference <skprocrustes>
-   Solvers <solvers>
    License <license>
    Authors <authors>
    
