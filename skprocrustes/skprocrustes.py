@@ -169,12 +169,12 @@ class ProcrustesProblem:
               .. math::
 
                  \\sigma_i = \\left\\{ 
-                 \\begin{align}
+                 \\begin{array}{l l}
                  10 + r, & \\qquad 1\\leq i \\leq m_1\\\\
                  5 + r, & \\qquad m_1+1\\leq i \\leq m_2\\\\
                  2 + r, & \\qquad m_2+1\\leq i \\leq m_3\\\\
                  \\frac{r}{1000}, & \\qquad m_3+1\\leq i\\leq m
-                 \\end{align}
+                 \\end{array}
                  \\right.
 
            Thus, :math:`A` has several small singular values and is 
@@ -1971,10 +1971,27 @@ def compare_solvers(problem, *args, plot=False):
           The problem for which we want to compare solvers.
        - ``args``: ``ProcrustesSolver`` objects
           The solvers we want to compare.
+       - ``plot``: ``bool`` 
+          If ``True``, plots the evolution of the residual at each iteration,
+          except for the GKBSolver (where the nature of the iterations does not
+          allow this kind of comparison)
 
     Output:
 
        **Statistics and graphs showing a comparison between solvers.**
+
+    Usage example:
+
+       To compare the 4 solvers on the same problem, you can do:
+
+       >>> myproblem = skp.ProcrustesProblem((1000,1000,10,10), problemnumber=1)
+       >>> solver1 = skp.EBSolver(full_results=True)
+       >>> solver2 = skp.SPGSolver(full_results=True)
+       >>> solver3 = skp.GPISolver(full_results=True)
+       >>> solver4 = skp.GKBSolver(full_results=True)
+       >>> results = skp.compare_solvers(myproblem, \
+                                         solver1, solver2, solver3, solver4, \
+                                         plot=True)
 
     .. note::
     

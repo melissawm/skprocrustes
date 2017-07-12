@@ -1,0 +1,21 @@
+\indexentry{skprocrustes (module)|hyperpage}{11}
+\indexentry{ProcrustesProblem (class in skprocrustes)|hyperpage}{11}
+\indexentry{\_setproblem() (skprocrustes.ProcrustesProblem method)|hyperpage}{12}
+\indexentry{OptimizeResult (class in skprocrustes)|hyperpage}{12}
+\indexentry{ProcrustesSolver (class in skprocrustes)|hyperpage}{13}
+\indexentry{\_setoptions() (skprocrustes.ProcrustesSolver method)|hyperpage}{13}
+\indexentry{solve() (skprocrustes.ProcrustesSolver method)|hyperpage}{13}
+\indexentry{SPGSolver (class in skprocrustes)|hyperpage}{13}
+\indexentry{\_setoptions() (skprocrustes.SPGSolver method)|hyperpage}{14}
+\indexentry{solve() (skprocrustes.SPGSolver method)|hyperpage}{14}
+\indexentry{GKBSolver (class in skprocrustes)|hyperpage}{14}
+\indexentry{solve() (skprocrustes.GKBSolver method)|hyperpage}{15}
+\indexentry{EBSolver (class in skprocrustes)|hyperpage}{15}
+\indexentry{\_setoptions() (skprocrustes.EBSolver method)|hyperpage}{15}
+\indexentry{solve() (skprocrustes.EBSolver method)|hyperpage}{15}
+\indexentry{GPISolver (class in skprocrustes)|hyperpage}{15}
+\indexentry{\_setoptions() (skprocrustes.GPISolver method)|hyperpage}{16}
+\indexentry{solve() (skprocrustes.GPISolver method)|hyperpage}{16}
+\indexentry{spectral\_solver() (in module skprocrustes)|hyperpage}{16}
+\indexentry{eb\_solver() (in module skprocrustes)|hyperpage}{17}
+\indexentry{gpi\_solver() (in module skprocrustes)|hyperpage}{17}
