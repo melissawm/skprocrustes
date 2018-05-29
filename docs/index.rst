@@ -16,7 +16,7 @@ Available Solvers
 
 * ``SPGSolver``    Nonmonotone Spectral Projected Gradient Method for the (unbalanced) WOPP, as described in :cite:`FranBaza12`.
 * ``GKBSolver``    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in :cite:`FranBazaWebe17`.
-* ``EBSolver``      Expansion-Balance method, as described in :cite:`BergKnol84`.
+* ``EBSolver``     Expansion-Balance method, as described in :cite:`BergKnol84`.
 * ``GPISolver``    Generalized Power Iteration for the WOPP, as described in :cite:`NieZhanLi17`.
      
 Usage

@@ -1,3 +1,6 @@
 *~
 .directory
 __pycache__
+build
+dist
+scikit_procrustes.egg-info
