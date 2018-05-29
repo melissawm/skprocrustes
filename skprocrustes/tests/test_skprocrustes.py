@@ -309,7 +309,7 @@ class TestSpectralSolver(TestCase):
 
     #TODO: test known solution for problem 3.
 
-class TestBlockBidiag(TestCase):
+#class TestBlockBidiag(TestCase):
 
     # def test_blockbidiag(self):
 
@@ -355,8 +355,8 @@ class TestBlockBidiag(TestCase):
         # print("V = {}\n".format(V[0:n, 0:smalldim]))
         # print("T - UT*A*V = {}\n".format(T[0:largedim, 0:smalldim] - np.dot(U[0:m, 0:largedim].T, np.dot(A, V[0:n, 0:smalldim]))))
 
-        maxerror = np.max(T[:,0:n] - np.dot(U.T, np.dot(A, V)))
-        assert_allclose(maxerror, 3.081431772960419e-15)
+        # maxerror = np.max(T[:,0:n] - np.dot(U.T, np.dot(A, V)))
+        # assert_allclose(maxerror, 3.081431772960419e-15)
 
 class TestBidiagGs(TestCase):
 
@@ -370,28 +370,27 @@ class TestBidiagGs(TestCase):
 
 class TestEBSolver(TestCase):
 
-    # def test_eb_solver_known_solution_small(self):
-    #     A = np.eye(10,10)
-    #     C = np.eye(2,2)
-    #     B = np.ones((10,2))
-    #     problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
-    #     mysolver = skp.EBSolver()
-    #     result = mysolver.solve(problem)
-    #     assert_allclose(result.fun, 3.6132711066291225)
-    #     assert_equal(result.nbiter, 1)
-    #     assert_equal(result.nfev, 2)
+    def test_eb_solver_known_solution_small(self):
+        A = np.eye(10,10)
+        C = np.eye(2,2)
+        Xsol = np.eye(10,2)
+        B = np.dot(A, np.dot(Xsol, C))
+        problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
+        mysolver = skp.EBSolver()
+        result = mysolver.solve(problem)
+        assert_allclose(result.fun, 1e-6, atol=1e-2)
+        assert_allclose(result.solution, np.eye(10,2), atol=1e-2)
 
-     def test_eb_solver_known_solution_problem_1(self):
-         A = np.random.rand(4,4)
-         C = np.eye(2,2)
-         Xsol = np.eye(4,2)
-         B = np.dot(A, np.dot(C, X))
-         problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
-         mysolver = skp.EBSolver()
-         result = mysolver.solve(problem)
-         assert_allclose(result.solution, np.eye(4,2), 1e-1)
-         #assert_allclose(result.nfev, 21)
-         #assert_allclose(result.fun, 6.021465862884726e-07)
+    def test_eb_solver_known_solution_problem_1(self):
+        A = np.random.rand(4,4)
+        C = np.eye(2,2)
+        Xsol = np.eye(4,2)
+        B = np.dot(A, np.dot(Xsol, C))
+        problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
+        mysolver = skp.EBSolver(verbose=0)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, np.eye(4,2), atol=1e-2)
+        assert_allclose(result.fun, 1e-6, atol=1e-2)
 
     # def test_eb_solver_known_solution_problem_2(self):
     #     A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
