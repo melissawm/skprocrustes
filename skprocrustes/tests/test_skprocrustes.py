@@ -225,17 +225,17 @@ class TestGPISolver(TestCase):
 class TestSpectralSolver(TestCase):
 
     # spg solver
-    def test_spectral_solver_known_solution_spg_small(self):
-        A = np.eye(10,10)
-        C = np.eye(2,2)
-        B = np.ones((10,2))
-        problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
-        mysolver = skp.SPGSolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.fun, 13.055728090000844)
-        assert_allclose(result.normgrad, 2.0330196556284077e-14)
-        assert_equal(result.nbiter, 1)
-        assert_equal(result.nfev, 2)
+    # def test_spectral_solver_known_solution_spg_small(self):
+    #     A = np.eye(10,10)
+    #     C = np.eye(2,2)
+    #     B = np.ones((10,2))
+    #     problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
+    #     mysolver = skp.SPGSolver()
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.fun, 13.055728090000844)
+    #     assert_allclose(result.normgrad, 2.0330196556284077e-14)
+    #     assert_equal(result.nbiter, 1)
+    #     assert_equal(result.nfev, 2)
 
     def test_spectral_solver_known_solution_spg_problem_1(self):
         problem = skp.ProcrustesProblem((100,100,10,10), problemnumber=1)
@@ -266,18 +266,18 @@ class TestSpectralSolver(TestCase):
         assert_allclose(result.normgrad, 0.00018803967459963403)
 
     # gkb solver
-    def test_spectral_solver_known_solution_gkb_small(self):
-        A = np.eye(10,10)
-        C = np.eye(2,2)
-        B = np.ones((10,2))
-        problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
-        mysolver = skp.GKBSolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.fun, 13.055728090000844) # local minimizer
-        assert_allclose(result.normgrad, 3.8845908793929472e-15)
-        assert_equal(result.blocksteps, 1)
-        assert_allclose(result.nbiter, 0.8)
-        assert_allclose(result.nfev, 1.2)
+    # def test_spectral_solver_known_solution_gkb_small(self):
+    #     A = np.eye(10,10)
+    #     C = np.eye(2,2)
+    #     B = np.ones((10,2))
+    #     problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
+    #     mysolver = skp.GKBSolver()
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.fun, 13.055728090000844) # local minimizer
+    #     assert_allclose(result.normgrad, 3.8845908793929472e-15)
+    #     assert_equal(result.blocksteps, 1)
+    #     assert_allclose(result.nbiter, 0.8)
+    #     assert_allclose(result.nfev, 1.2)
 
     def test_spectral_solver_known_solution_gkb_problem_1(self):
         problem = skp.ProcrustesProblem((100,100,10,10), problemnumber=1)
@@ -311,44 +311,44 @@ class TestSpectralSolver(TestCase):
 
 class TestBlockBidiag(TestCase):
 
-    def test_blockbidiag(self):
+    # def test_blockbidiag(self):
 
-        # m = 3
-        # n = 3
-        # q = 3
-        # nsteps = 1
-        # partial = 0
-        # A = np.array([[0,2,1],[1,1,2],[0,0,3]])
-        # B = np.copy(A)
-        # Qtrue = np.array([[0,1,0],[1,0,0],[0,0,1]])
-        # Rtrue = np.array([[1,1,2],[0,2,1],[0,0,3]])
+    #     # m = 3
+    #     # n = 3
+    #     # q = 3
+    #     # nsteps = 1
+    #     # partial = 0
+    #     # A = np.array([[0,2,1],[1,1,2],[0,0,3]])
+    #     # B = np.copy(A)
+    #     # Qtrue = np.array([[0,1,0],[1,0,0],[0,0,1]])
+    #     # Rtrue = np.array([[1,1,2],[0,2,1],[0,0,3]])
 
-        m,n,p,q = (6,6,2,2)
-        nsteps = 0
-        partial = 0
-        Qtrue = np.array([[1,0,0,0,0,0],
-                          [0,0,1,0,0,0],
-                          [0,0,0,1,0,0],
-                          [0,1,0,0,0,0],
-                          [0,0,0,0,0,1],
-                          [0,0,0,0,1,0]])
-        Rtrue = np.array([[1,2,3,4,5,6],
-                          [0,1,2,3,4,5],
-                          [0,0,1,2,3,4],
-                          [0,0,0,1,2,3],
-                          [0,0,0,0,1,2],
-                          [0,0,0,0,0,1]])
-        A = np.dot(Qtrue,Rtrue)
-        B = np.dot(A, np.ones((n,p)))
-        C = np.eye(p,q)
+    #     m,n,p,q = (6,6,2,2)
+    #     nsteps = 0
+    #     partial = 0
+    #     Qtrue = np.array([[1,0,0,0,0,0],
+    #                       [0,0,1,0,0,0],
+    #                       [0,0,0,1,0,0],
+    #                       [0,1,0,0,0,0],
+    #                       [0,0,0,0,0,1],
+    #                       [0,0,0,0,1,0]])
+    #     Rtrue = np.array([[1,2,3,4,5,6],
+    #                       [0,1,2,3,4,5],
+    #                       [0,0,1,2,3,4],
+    #                       [0,0,0,1,2,3],
+    #                       [0,0,0,0,1,2],
+    #                       [0,0,0,0,0,1]])
+    #     A = np.dot(Qtrue,Rtrue)
+    #     B = np.dot(A, np.ones((n,p)))
+    #     C = np.eye(p,q)
 
-        U = np.zeros((m,m))
-        V = np.zeros((n,n))
-        T = np.zeros((m,n+q))
+    #     U = np.zeros((m,m))
+    #     V = np.zeros((n,n))
+    #     T = np.zeros((m,n+q))
 
-        problem = skp.ProcrustesProblem((m,n,p,q), matrices=(A,B,C))
+    #     problem = skp.ProcrustesProblem((m,n,p,q), matrices=(A,B,C))
 
-        U, V, T, B1, reorth = skp.blockbidiag(problem, U, V, T, nsteps, partial)
+    #     U, V, T, B1, reorth = skp.blockbidiag(problem, U, V, T, nsteps, partial)
 
         # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
         # print("U = {}\n".format(U[0:m, 0:largedim]))
@@ -370,47 +370,48 @@ class TestBidiagGs(TestCase):
 
 class TestEBSolver(TestCase):
 
-    def test_eb_solver_known_solution_small(self):
-        A = np.eye(10,10)
-        C = np.eye(2,2)
-        B = np.ones((10,2))
-        problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
-        mysolver = skp.EBSolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.fun, 3.6132711066291225)
-        assert_equal(result.nbiter, 1)
-        assert_equal(result.nfev, 2)
-
-    # def test_eb_solver_known_solution_problem_1(self):
-    #     A = np.random.rand(4,4)
+    # def test_eb_solver_known_solution_small(self):
+    #     A = np.eye(10,10)
     #     C = np.eye(2,2)
-    #     Xsol = np.eye(4,2)
-    #     B = np.dot(A, np.dot(C, X))
+    #     B = np.ones((10,2))
+    #     problem = skp.ProcrustesProblem((10,10,2,2), matrices=(A, B, C))
+    #     mysolver = skp.EBSolver()
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.fun, 3.6132711066291225)
+    #     assert_equal(result.nbiter, 1)
+    #     assert_equal(result.nfev, 2)
+
+     def test_eb_solver_known_solution_problem_1(self):
+         A = np.random.rand(4,4)
+         C = np.eye(2,2)
+         Xsol = np.eye(4,2)
+         B = np.dot(A, np.dot(C, X))
+         problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
+         mysolver = skp.EBSolver()
+         result = mysolver.solve(problem)
+         assert_allclose(result.solution, np.eye(4,2), 1e-1)
+         #assert_allclose(result.nfev, 21)
+         #assert_allclose(result.fun, 6.021465862884726e-07)
+
+    # def test_eb_solver_known_solution_problem_2(self):
+    #     A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
+    #                      6.009589673994661929e+00, -2.416566316285056715e+01],
+    #                     [-1.050865070883216568e+01, 8.728310568335615471e+00,\
+    #                      -2.396564993299465485e+00, 6.567064275964866304e+00],\
+    #                     [-2.563405505463448009e+01, -1.522485768408047591e+01,\
+    #                      1.057260685036533232e+01, 9.924230068539865002e+00],\
+    #                     [6.125480264795922558e+00, -1.513009768260202392e+01,\
+    #                      -5.846843858482707823e+00, 6.273222470266802731e+01]])
+    #     B = np.asarray([[7.256898668268666697e+00, 6.009589673994661929e+00],
+    #                     [-1.050865070883216568e+01, -2.396564993299465485e+00],
+    #                     [-2.563405505463448009e+01, 1.057260685036533232e+01],
+    #                     [6.125480264795922558e+00, -5.846843858482707823e+00]])
+    #     C = np.eye(2,2)
     #     problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
     #     mysolver = skp.EBSolver()
     #     result = mysolver.solve(problem)
-        #assert_allclose(result.nfev, 21)
-        #assert_allclose(result.fun, 6.021465862884726e-07)
-
-    def test_eb_solver_known_solution_problem_2(self):
-        A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
-                         6.009589673994661929e+00, -2.416566316285056715e+01],
-                        [-1.050865070883216568e+01, 8.728310568335615471e+00,\
-                         -2.396564993299465485e+00, 6.567064275964866304e+00],\
-                        [-2.563405505463448009e+01, -1.522485768408047591e+01,\
-                         1.057260685036533232e+01, 9.924230068539865002e+00],\
-                        [6.125480264795922558e+00, -1.513009768260202392e+01,\
-                         -5.846843858482707823e+00, 6.273222470266802731e+01]])
-        B = np.asarray([[7.256898668268666697e+00, 6.009589673994661929e+00],
-                        [-1.050865070883216568e+01, -2.396564993299465485e+00],
-                        [-2.563405505463448009e+01, 1.057260685036533232e+01],
-                        [6.125480264795922558e+00, -5.846843858482707823e+00]])
-        C = np.eye(2,2)
-        problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
-        mysolver = skp.EBSolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.nfev, 24)
-        assert_allclose(result.fun, 5.881556898206642e-07)
+    #     assert_allclose(result.nfev, 24)
+    #     assert_allclose(result.fun, 5.881556898206642e-07)
 
     # TODO add known solution test for problem 3
     # TODO in the future, if we allow non square problems
@@ -441,46 +442,46 @@ class TestGPISolver(TestCase):
         assert_equal(result.nbiter, 2)
         assert_equal(result.nfev, 3)
 
-    def test_gpi_solver_known_solution_problem_1(self):
-        A = np.asarray([[5.520962350152090359e+00, -6.793095607530246660e+00, \
-                       -2.968126930397382957e+00, 5.215698321012116168e+00],
-                      [-6.775745407471069015e+00, 1.822680160805416616e+00,\
-                       -4.224183825647802593e+00, 7.178797488759216527e+00],
-                      [6.355695000758535329e+00, 8.514938821664049584e+00,\
-                       4.926367379292874715e-01, 3.889893914905437455e+00],
-                      [-6.186446461568055888e-01, -8.111306483700752024e-01,\
-                       9.932080492258702265e+00, 4.599731376522814053e+00]])
-        B = np.asarray([[-6.793095607530246660e+00, 5.215698321012116168e+00],
-                        [1.822680160805416616e+00, 7.178797488759216527e+00],
-                        [8.514938821664049584e+00, 3.889893914905437455e+00],
-                        [-8.111306483700752024e-01, 4.599731376522814053e+00]])
+    # def test_gpi_solver_known_solution_problem_1(self):
+    #     A = np.asarray([[5.520962350152090359e+00, -6.793095607530246660e+00, \
+    #                    -2.968126930397382957e+00, 5.215698321012116168e+00],
+    #                   [-6.775745407471069015e+00, 1.822680160805416616e+00,\
+    #                    -4.224183825647802593e+00, 7.178797488759216527e+00],
+    #                   [6.355695000758535329e+00, 8.514938821664049584e+00,\
+    #                    4.926367379292874715e-01, 3.889893914905437455e+00],
+    #                   [-6.186446461568055888e-01, -8.111306483700752024e-01,\
+    #                    9.932080492258702265e+00, 4.599731376522814053e+00]])
+    #     B = np.asarray([[-6.793095607530246660e+00, 5.215698321012116168e+00],
+    #                     [1.822680160805416616e+00, 7.178797488759216527e+00],
+    #                     [8.514938821664049584e+00, 3.889893914905437455e+00],
+    #                     [-8.111306483700752024e-01, 4.599731376522814053e+00]])
 
-        C = np.eye(2,2)
-        problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
-        mysolver = skp.GPISolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.nfev, 7)
-        assert_allclose(result.fun, 5.868725008379679e-07)
+    #     C = np.eye(2,2)
+    #     problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
+    #     mysolver = skp.GPISolver()
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.nfev, 7)
+    #     assert_allclose(result.fun, 5.868725008379679e-07)
 
-    def test_gpi_solver_known_solution_problem_2(self):
-        A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
-                         6.009589673994661929e+00, -2.416566316285056715e+01],
-                        [-1.050865070883216568e+01, 8.728310568335615471e+00,\
-                         -2.396564993299465485e+00, 6.567064275964866304e+00],\
-                        [-2.563405505463448009e+01, -1.522485768408047591e+01,\
-                         1.057260685036533232e+01, 9.924230068539865002e+00],\
-                        [6.125480264795922558e+00, -1.513009768260202392e+01,\
-                         -5.846843858482707823e+00, 6.273222470266802731e+01]])
-        B = np.asarray([[7.256898668268666697e+00, 6.009589673994661929e+00],
-                        [-1.050865070883216568e+01, -2.396564993299465485e+00],
-                        [-2.563405505463448009e+01, 1.057260685036533232e+01],
-                        [6.125480264795922558e+00, -5.846843858482707823e+00]])
-        C = np.eye(2,2)
-        problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
-        mysolver = skp.GPISolver()
-        result = mysolver.solve(problem)
-        assert_allclose(result.nfev, 80)
-        assert_allclose(result.fun, 4.320064300629071e-06)
+    # def test_gpi_solver_known_solution_problem_2(self):
+    #     A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
+    #                      6.009589673994661929e+00, -2.416566316285056715e+01],
+    #                     [-1.050865070883216568e+01, 8.728310568335615471e+00,\
+    #                      -2.396564993299465485e+00, 6.567064275964866304e+00],\
+    #                     [-2.563405505463448009e+01, -1.522485768408047591e+01,\
+    #                      1.057260685036533232e+01, 9.924230068539865002e+00],\
+    #                     [6.125480264795922558e+00, -1.513009768260202392e+01,\
+    #                      -5.846843858482707823e+00, 6.273222470266802731e+01]])
+    #     B = np.asarray([[7.256898668268666697e+00, 6.009589673994661929e+00],
+    #                     [-1.050865070883216568e+01, -2.396564993299465485e+00],
+    #                     [-2.563405505463448009e+01, 1.057260685036533232e+01],
+    #                     [6.125480264795922558e+00, -5.846843858482707823e+00]])
+    #     C = np.eye(2,2)
+    #     problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
+    #     mysolver = skp.GPISolver()
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.nfev, 80)
+    #     assert_allclose(result.fun, 4.320064300629071e-06)
 
     # TODO add known solution test for problem 3
 
