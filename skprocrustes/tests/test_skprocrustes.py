@@ -382,37 +382,26 @@ class TestEBSolver(TestCase):
         assert_allclose(result.solution, np.eye(10,2), atol=1e-2)
 
     def test_eb_solver_known_solution_problem_1(self):
-        A = np.random.rand(4,4)
-        C = np.eye(2,2)
-        Xsol = np.eye(4,2)
-        B = np.dot(A, np.dot(Xsol, C))
-        problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
+        problem = skp.ProcrustesProblem((4,4,2,2), problemnumber=1)
         mysolver = skp.EBSolver(verbose=0)
         result = mysolver.solve(problem)
-        assert_allclose(result.solution, np.eye(4,2), atol=1e-2)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
         assert_allclose(result.fun, 1e-6, atol=1e-2)
 
-    # def test_eb_solver_known_solution_problem_2(self):
-    #     A = np.asarray([[7.256898668268666697e+00, -2.573732000807788012e+01,\
-    #                      6.009589673994661929e+00, -2.416566316285056715e+01],
-    #                     [-1.050865070883216568e+01, 8.728310568335615471e+00,\
-    #                      -2.396564993299465485e+00, 6.567064275964866304e+00],\
-    #                     [-2.563405505463448009e+01, -1.522485768408047591e+01,\
-    #                      1.057260685036533232e+01, 9.924230068539865002e+00],\
-    #                     [6.125480264795922558e+00, -1.513009768260202392e+01,\
-    #                      -5.846843858482707823e+00, 6.273222470266802731e+01]])
-    #     B = np.asarray([[7.256898668268666697e+00, 6.009589673994661929e+00],
-    #                     [-1.050865070883216568e+01, -2.396564993299465485e+00],
-    #                     [-2.563405505463448009e+01, 1.057260685036533232e+01],
-    #                     [6.125480264795922558e+00, -5.846843858482707823e+00]])
-    #     C = np.eye(2,2)
-    #     problem = skp.ProcrustesProblem((4,4,2,2), matrices=(A,B,C))
-    #     mysolver = skp.EBSolver()
-    #     result = mysolver.solve(problem)
-    #     assert_allclose(result.nfev, 24)
-    #     assert_allclose(result.fun, 5.881556898206642e-07)
+    def test_eb_solver_known_solution_problem_2(self):
+        problem = skp.ProcrustesProblem((4,4,2,2), problemnumber=2)
+        mysolver = skp.EBSolver(verbose=0)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+        assert_allclose(result.fun, 1e-6, atol=1e-2)
 
-    # TODO add known solution test for problem 3
+    def test_eb_solver_known_solution_problem_3(self):
+        problem = skp.ProcrustesProblem((50,50,5,5), problemnumber=3)
+        mysolver = skp.EBSolver(verbose=0)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-1)
+        #assert_allclose(result.fun, 1e-6, atol=1e-1)
+        
     # TODO in the future, if we allow non square problems
     # def test_set_options_eb_solver_A_not_square(self):
     #     problem = skp.ProcrustesProblem((4,2,2,2), problemnumber=1)
