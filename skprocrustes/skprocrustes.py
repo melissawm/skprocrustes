@@ -327,6 +327,8 @@ class OptimizeResult(dict):
        underlying solver. Refer to `message` for details.
     - ``message`` : ``str``
        Description of the cause of the termination.
+    - ``solution`` : ``ndarray``
+       Matrix representing the solution found by the method.
     - ``fun`` : ``float``
        Value of the objective function at the solution.
     - ``normgrad`` : ``float``
@@ -543,7 +545,7 @@ class SPGSolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
         
-        fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, \
+        X, fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, \
                                                        self.options)
 
         if self.options["full_results"]:
@@ -554,6 +556,7 @@ class SPGSolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution = X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
@@ -564,6 +567,7 @@ class SPGSolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution = X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
@@ -641,7 +645,7 @@ class GKBSolver(SPGSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
-        fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, self.options)
+        X, fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, self.options)
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -651,6 +655,7 @@ class GKBSolver(SPGSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution=X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
@@ -662,6 +667,7 @@ class GKBSolver(SPGSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution=X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
@@ -721,7 +727,7 @@ class EBSolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
-        fval, exitcode, msg = eb_solver(problem, self.options)
+        X, fval, exitcode, msg = eb_solver(problem, self.options)
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -731,6 +737,7 @@ class EBSolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution=X,
                                     fun=fval,
                                     nbiter=problem.stats["nbiter"],
                                     nfev=problem.stats["fev"],
@@ -740,6 +747,7 @@ class EBSolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution=X,
                                     fun=fval,
                                     nbiter=problem.stats["nbiter"],
                                     nfev=problem.stats["fev"])
@@ -860,7 +868,7 @@ class GPISolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
-        fval, exitcode, msg = gpi_solver(problem, self.options)
+        X, fval, exitcode, msg = gpi_solver(problem, self.options)
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -870,6 +878,7 @@ class GPISolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
+                                    solution=X,
                                     fun=fval,
                                     nbiter=problem.stats["nbiter"],
                                     nfev=problem.stats["fev"],
@@ -878,6 +887,7 @@ class GPISolver(ProcrustesSolver):
         else:
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
+                                    solution=X,
                                     message=msg,
                                     fun=fval,
                                     nbiter=problem.stats["nbiter"],
@@ -1160,10 +1170,10 @@ def spectral_setup(problem, solvername, options):
 
     if normgrad <= options["gtol"]:
         msg = _status_message['success']
-        # if options["verbose"] > 0:
-        #     print(msg)
+        if options["verbose"] > 0:
+            print(msg)
 
-    return f, normgrad, exitcode, msg
+    return Xk, f, normgrad, exitcode, msg
 
 def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
@@ -1842,7 +1852,7 @@ def eb_solver(problem, options):
        
     problem.stats["nbiter"] = nbiter
             
-    return f, exitcode, msg
+    return X, f, exitcode, msg
 
 def gpi_solver(problem, options):
 
@@ -1936,7 +1946,7 @@ def gpi_solver(problem, options):
        
     problem.stats["nbiter"] = nbiter
             
-    return f, exitcode, msg
+    return X, f, exitcode, msg
 
 def compare_solvers(problem, *args, plot=False):
     """
