@@ -1945,8 +1945,9 @@ def gpi_solver(problem, options):
         msg = _status_message["success"]
        
     problem.stats["nbiter"] = nbiter
-            
-    return X, f, exitcode, msg
+
+    # Sometimes, X assumes some imaginary garbage values.    
+    return X.real, f, exitcode, msg
 
 def compare_solvers(problem, *args, plot=False):
     """
