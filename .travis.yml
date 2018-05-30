@@ -31,5 +31,5 @@ script:
       fi
 
     - if [[ $TEST_TARGET == 'coding_standards' ]]; then
-        flake8 skprocrustes
+        flake8 skprocrustes ;
       fi
