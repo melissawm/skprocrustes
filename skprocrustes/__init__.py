@@ -12,13 +12,13 @@ from .skprocrustes import gpi_solver
 from .skprocrustes import blockbidiag
 from .skprocrustes import bidiaggs
 from .skprocrustes import optimality
-from .skprocrustes import compare_results
+from .skprocrustes import compare_solvers
 from numpy.testing import Tester
 
 __all__ = ['ProcrustesProblem', 'OptimizeResult', 'ProcrustesSolver',
            'SPGSolver', 'GKBSolver', 'EBSolver', 'GPISolver',
            'spectral_setup', 'spectral_solver', 'eb_solver', 'gpi_solver',
-           'blockbidiag', 'bidiaggs', 'optimality', 'compare_results']
+           'blockbidiag', 'bidiaggs', 'optimality', 'compare_solvers']
 
 # If you want to use Numpy's testing framerwork, use the following.
 # Tests go under directory tests/, benchmarks under directory benchmarks/
