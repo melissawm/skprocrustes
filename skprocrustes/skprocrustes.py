@@ -1642,8 +1642,8 @@ def blockbidiag(problem, U, V, T, steps, partial):
         T[inds:inds+s, inds:inds+s] = np.copy(Aip1.T)
 
         # TODO: This should be a test!
-        if debug and problem.options["verbose"] > 1:
-            debug_bidiag(i, s, inds, problem.A, problem.B, U, V, T)
+        # if debug and problem.options["verbose"] > 1:
+        #    debug_bidiag(i, s, inds, problem.A, problem.B, U, V, T)
 
     if debug and problem.options["verbose"] > 1:
         print("\n        MaxError: max(T-U'*A*V) = {}\n"

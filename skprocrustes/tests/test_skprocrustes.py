@@ -63,7 +63,7 @@ class TestSetProblem(TestCase):
         S = np.sort(S)
         # Zhang & Du - Example 3
         Sigmaorig = np.zeros(min(10, 10))
-        for i in range(0,min(10, 10)):
+        for i in range(0, min(10, 10)):
             Sigmaorig[i] = 1.0 + (99.0*float(i-1))/(float(10)-1.0)
         Sigmaorig = np.sort(np.abs(Sigmaorig))
         assert_allclose(Sigmaorig, S, rtol=2.0)
