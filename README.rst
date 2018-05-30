@@ -1,8 +1,11 @@
 =================
-scikit-procrustes
+scikit-procrustes 
 =================
 
 This is a scikit for the Weighted Orthogonal Procrustes Problem. 
+
+.. image:: https://travis-ci.org/melissawm/skprocrustes.svg?branch=master
+   :target: https://travis-ci.org/melissawm/skprocrustes
 
 Installation from sources
 =========================
@@ -13,7 +16,7 @@ In the root directory of the package, just do::
 
 Latest Software
 ===============
-The latest software can be downloaded from `GitHub <https://github.com/melissawm/scikit-procrustes>`_
+The latest software can be downloaded from `GitHub <https://github.com/melissawm/skprocrustes>`_
 
 Installation Dependencies
 -------------------------
@@ -40,5 +43,3 @@ Melissa Weber Mendonça
 *Federal University of Santa Catarina (UFSC)*
 
 *Florianópolis, SC - Brasil*
-
-6 July 2017
