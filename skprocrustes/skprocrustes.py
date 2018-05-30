@@ -29,20 +29,20 @@
 # See the documentation for more details.
 
 import numpy as np
-# The subpackages of scipy do not get imported by import scipy by design. It 
+# The subpackages of scipy do not get imported by import scipy by design. It
 # is intended that you import them separately. Never use a plain import scipy.
 from scipy import linalg as sp
 from scipy.sparse import linalg as spl
 import matplotlib.pyplot as plt
-import time
 
 # standard status messages of optimizers (based on scipy.optimize)
-_status_message = {'success'     : 'Optimization terminated successfully.',
-                   'infeasible'  : 'Infeasible point found.',
-                   'smallpred'   : 'Small PRED',
+_status_message = {'success': 'Optimization terminated successfully.',
+                   'infeasible': 'Infeasible point found.',
+                   'smallpred': 'Small PRED',
                    'negativepred': 'Negative PRED',
-                   'maxiter'     : 'Maximum number of iterations has been '
+                   'maxiter': 'Maximum number of iterations has been '
                    'exceeded.'}
+
 
 class ProcrustesProblem:
 
@@ -65,30 +65,30 @@ class ProcrustesProblem:
        >>> problem = skp.ProcrustesProblem((m,n,p,q), matrices=(A,B,C,X))
 
     Input Parameters:
-    
+
        ``sizes``: tuple
-          ``(m,n,p,q)``, where :math:`A_{m\\times n}, B_{m \\times q}, 
+          ``(m,n,p,q)``, where :math:`A_{m\\times n}, B_{m \\times q},
           C_{p\\times q}` and :math:`X_{n\\times p}`.
-       
+
        *(optional)* ``problemnumber``: int
           Can be ``1``, ``2`` or ``3``, and selects one of the predefined
           problems as described in reference :cite:`ZhanDu06`.
           (for more details, see the documentation for ``_setproblem``)
 
        *(optional)* ``matrices``: list of ndarrays
-          If present, must contain a list of three or four matrices 
+          If present, must contain a list of three or four matrices
           corresponding to :math:`A`, :math:`B`, :math:`C`, and optionally
           :math:`X` (known solution) with adequate sizes.
 
     .. note::
-       Currently, m must be equal do n, and p must be equal do q. This 
+       Currently, m must be equal do n, and p must be equal do q. This
        is the case for all three solvers. (However, n can be greater than
        p)
 
     .. note::
        If ``matrices`` is not given by the user, ``problemnumber``
-       (1, 2 or 3) must be selected so that one of the default problems 
-       is built. 
+       (1, 2 or 3) must be selected so that one of the default problems
+       is built.
 
     Attributes:
 
@@ -99,7 +99,7 @@ class ProcrustesProblem:
        >>> problem.C
        >>> problem.Xsol
     """
-    
+
     def __init__(self, sizes, problemnumber=None, matrices=[]):
         if sizes[0] != sizes[1] or sizes[2] != sizes[3]:
             raise Exception("Currently only square problems are supported.")
@@ -110,7 +110,7 @@ class ProcrustesProblem:
             self.sizes = sizes
         self.problemnumber = problemnumber
         self._setproblem(matrices, problemnumber)
-        
+
         # stats will be filled when the optimization is finished and
         # will be returned in the OptimizeResult instance.
         self.stats = dict([])
@@ -120,17 +120,17 @@ class ProcrustesProblem:
         #   "gradient": 0,
         #   "blocksteps": 0,
         #   "full_results": [None]}
-        
+
     def _setproblem(self, matrices, problemnumber):
 
         """
         Method to effectively build A, B, and C if they are not already given.
 
-        *This method should not be called directly; it is called by the 
+        *This method should not be called directly; it is called by the
         ProcrustesProblem constructor.*
 
         Available problems are all based on reference :cite:`ZhanDu06`:
-        All problems have the form 
+        All problems have the form
 
            .. math::
 
@@ -139,36 +139,36 @@ class ProcrustesProblem:
         where :math:`\Sigma` varies between problems, and
 
            .. math::
-        
+
               U = I_{m\\times m} - 2uu^T\\\\
               V = I_{n\\times n} - 2vv^T
 
-        where :math:`u` and :math:`v` are randomly generated using 
+        where :math:`u` and :math:`v` are randomly generated using
         ``np.random.randn`` (normal distribution) and then normalized.
-        
+
         :math:`C` can be built, but for our predefined problems it is always
         the identity matrix.
 
         ``problemnumber = 1``:
-           Well conditioned problem: the singular values are randomly and 
+           Well conditioned problem: the singular values are randomly and
            uniformly distributed in the interval [10,12].
 
         ``problemnumber = 2``:
            For this problem, the singular values are
-        
+
               .. math::
-         
+
                  \\sigma_i = 1 + \\frac{99(i-1)}{(m-1)} + 2r_i
 
-           and :math:`r_i` are random numbers chosen from a uniform distribution
-           on the interval [0,1].
+           and :math:`r_i` are random numbers chosen from a uniform
+           distribution on the interval [0,1].
 
         ``problemnumber = 3``:
            For this problem, the singular values are
 
               .. math::
 
-                 \\sigma_i = \\left\\{ 
+                 \\sigma_i = \\left\\{
                  \\begin{array}{l l}
                  10 + r, & \\qquad 1\\leq i \\leq m_1\\\\
                  5 + r, & \\qquad m_1+1\\leq i \\leq m_2\\\\
@@ -177,17 +177,17 @@ class ProcrustesProblem:
                  \\end{array}
                  \\right.
 
-           Thus, :math:`A` has several small singular values and is 
-           ill-conditioned.          
+           Thus, :math:`A` has several small singular values and is
+           ill-conditioned.
 
         .. note::
 
-           ``problemnumber = 3`` can only be used if :math:`n = 50`, 
+           ``problemnumber = 3`` can only be used if :math:`n = 50`,
            :math:`n = 95`, :math:`n = 500` or :math:`n = 1000`.
         """
-        # A(m,n), B(m,q), C(p,q) 
-        m,n,p,q = self.sizes
-        
+        # A(m,n), B(m,q), C(p,q)
+        m, n, p, q = self.sizes
+
         if not matrices:
 
             # Predefined examples for testing and benchmarking.
@@ -201,16 +201,16 @@ class ProcrustesProblem:
             if problemnumber == 1:
                 # [ZhanDu06] - Example 1
                 Sigmaorig = 10.0 + 2.0*np.random.rand(n)
-                Sigma = np.zeros((m,n))
+                Sigma = np.zeros((m, n))
                 Sigma[0:n, 0:n] = np.diag(Sigmaorig)
 
             elif problemnumber == 2:
                 # [ZhanDu06] - Example 3
-                Sigmaorig = np.zeros(min(m,n))
-                for i in range(0,min(m,n)):
+                Sigmaorig = np.zeros(min(m, n))
+                for i in range(0, min(m, n)):
                     Sigmaorig[i] = 1.0 + (99.0*float(i-1))/(float(n)-1.0) \
                                    + 2.0*np.random.rand(1)
-                Sigma = np.zeros((m,n))
+                Sigma = np.zeros((m, n))
                 Sigma[0:n, 0:n] = np.diag(Sigmaorig)
 
             elif problemnumber == 3:
@@ -228,51 +228,51 @@ class ProcrustesProblem:
                 elif n == 1000:
                     n1, n2, n3, n4 = (300, 300, 240, 160)
                 else:
-                    raise Exception ("Error!!! Problem 6 requires n = 50,"
-                                     "n = 95, n = 500 or n = 1000.")
-                    
-                vaux = np.zeros((n,1))
-                vaux[0:n1] = 10.0 + np.random.rand(n1,1)
-                vaux[n1:n1+n2] = 5.0 + np.random.rand(n2,1)
-                vaux[n1+n2:n1+n2+n3] = 2.0 + np.random.rand(n3,1)
-                vaux[n1+n2+n3:] = np.random.rand(n4,1)/1000.0
+                    raise Exception("Error!!! Problem 6 requires n = 50,"
+                                    "n = 95, n = 500 or n = 1000.")
+
+                vaux = np.zeros((n, 1))
+                vaux[0:n1] = 10.0 + np.random.rand(n1, 1)
+                vaux[n1:n1+n2] = 5.0 + np.random.rand(n2, 1)
+                vaux[n1+n2:n1+n2+n3] = 2.0 + np.random.rand(n3, 1)
+                vaux[n1+n2+n3:] = np.random.rand(n4, 1)/1000.0
 
                 Sigma = np.diagflat(vaux)
             else:
-                raise Exception ("Problem matrices are empty and no "
-                                 "problem number has been chosen.")
+                raise Exception("Problem matrices are empty and no "
+                                "problem number has been chosen.")
 
             # Building A
-            uu = np.random.randn(m,1)
-            U = np.eye(m,m) - 2.0*uu*uu.T/sp.norm(uu)**2
-            
-            vv = np.random.randn(n,1)
-            V = np.eye(n,n) - 2.0*vv*vv.T/sp.norm(vv)**2
+            uu = np.random.randn(m, 1)
+            U = np.eye(m, m) - 2.0*uu*uu.T/sp.norm(uu)**2
 
-            A = np.dot(U,np.dot(Sigma,V.T))
+            vv = np.random.randn(n, 1)
+            V = np.eye(n, n) - 2.0*vv*vv.T/sp.norm(vv)**2
+
+            A = np.dot(U, np.dot(Sigma, V.T))
 
             # Building C
-            C = np.eye(p,q)
-            
-            ## Unused option:
-            ## VcL = np.eye(p,p)
-            ## VcR = np.eye(q,q)
-            ## VcL = np.eye(p,p) - 2.0*uu[0:p]*uu[0:p].T/(sp.norm(uu[0:p]))**2
-            ## VcR = np.eye(q,q) - 2.0*vv[0:q]*vv[0:q].T/(sp.norm(vv[0:q]))**2
-            ## C = np.dot(VcL,np.dot(C,VcR.transpose()))
-        
-            # Known solution
-            ## Unused option:
-            ## real (wp) :: vsol(size(A,2))
-            ## call random_number(vsol)
-            ## vsol = vsol/dnrm2(n,vsol,1)
-            ## Xsol1 = eye(n) - 2*vsol*vsol';
+            C = np.eye(p, q)
 
-            Xsol = np.eye(n,p)
+            # Unused option:
+            # VcL = np.eye(p,p)
+            # VcR = np.eye(q,q)
+            # VcL = np.eye(p,p) - 2.0*uu[0:p]*uu[0:p].T/(sp.norm(uu[0:p]))**2
+            # VcR = np.eye(q,q) - 2.0*vv[0:q]*vv[0:q].T/(sp.norm(vv[0:q]))**2
+            # C = np.dot(VcL,np.dot(C,VcR.transpose()))
+
+            # Known solution
+            # Unused option:
+            # real (wp) :: vsol(size(A,2))
+            # call random_number(vsol)
+            # vsol = vsol/dnrm2(n,vsol,1)
+            # Xsol1 = eye(n) - 2*vsol*vsol';
+
+            Xsol = np.eye(n, p)
             Xsol = np.random.permutation(Xsol)
-        
+
             # Building B
-    
+
             B = np.dot(A, np.dot(Xsol, C))
 
             # Set problem up
@@ -283,40 +283,42 @@ class ProcrustesProblem:
 
         else:
             # User supplied problem.
-            if len(matrices) < 3 or not (type(matrices) is tuple \
+            if len(matrices) < 3 or not (type(matrices) is tuple
                or type(matrices) is list):
                 raise Exception("matrices must be a list or tuple containing"
                                 "matrices A, B and C (optionally, also a "
                                 "known solution Xsol with compatible sizes:"
                                 "A(m,n), B(m,q), C(p,q), Xsol(n,p)")
             else:
-                if matrices[0].shape != (m,n):
+                if matrices[0].shape != (m, n):
                     raise Exception("A must be (m,n)")
                 else:
                     self.A = matrices[0]
 
-                if matrices[1].shape != (m,q):
+                if matrices[1].shape != (m, q):
                     raise Exception("B must be (m,q)")
                 else:
                     self.B = matrices[1]
 
-                if matrices[2].shape != (p,q):
+                if matrices[2].shape != (p, q):
                     raise Exception("C must be (p,q)")
                 else:
                     self.C = matrices[2]
-                    
+
             if len(matrices) == 4:
-                if matrices[3].shape != (n,p):
+                if matrices[3].shape != (n, p):
                     raise Exception("Xsol must be (n,p)")
                 else:
                     self.Xsol = matrices[3]
 
+
 class OptimizeResult(dict):
-    """ Represents the optimization result. 
+
+    """ Represents the optimization result.
     (*based on scipy.optimize.OptimizeResult*)
 
     This class is constructed as a dictionary of parameters defined by
-    the creation of the instance. Thus, its attributes may vary.    
+    the creation of the instance. Thus, its attributes may vary.
 
     Possible attributes:
 
@@ -336,21 +338,21 @@ class OptimizeResult(dict):
     - ``nbiter`` : ``int``
        Number of iterations performed by the optimizer.
     - ``nfev`` : ``int``/``float``
-       Number of evaluations of the objective function (if called by 
+       Number of evaluations of the objective function (if called by
        GKBSolver, nfev is a float representing the proportional number
        of calls to the objective function at each block step).
     - ``blocksteps`` : ``int``
        Number of blocksteps performed (if called by GKBSolver)
     - ``total_fun``: list
-       List of objective function values for each iteration performed 
+       List of objective function values for each iteration performed
        (used to report and compare algorithms). Only if ``full_results``
        is True.
     - ``total_grad``: list
-       List of gradient norm values for each iteration performed 
+       List of gradient norm values for each iteration performed
        (used to report and compare algorithms). Only if ``full_results``
        is True, and only for SPGSolver and GKBSolver.
     - ``total_crit``: list
-       List of criticality measure values for each iteration performed 
+       List of criticality measure values for each iteration performed
        (used to report and compare algorithms). Only if ``full_results``
        is True, and only for EBSolver and GPISolver.
 
@@ -380,6 +382,7 @@ class OptimizeResult(dict):
     def __dir__(self):
         return list(self.keys())
 
+
 class ProcrustesSolver:
     """
     Abstract class to implement a solver for the ProcrustesProblem.
@@ -388,13 +391,13 @@ class ProcrustesSolver:
     """
     def __init__(self, *args, **kwargs):
         self.solver = None
-    
+
     def _setoptions(self, *args, **kwargs):
         """
         Choose which options are valid and applicable to this solver.
         """
         pass
-            
+
     def solve(self, *args, **kwargs):
         """
         Call a solver function and set up the ``OptimizeResult`` instance with
@@ -413,10 +416,11 @@ class ProcrustesSolver:
         result = OptimizeResult(output)
         return result
 
+
 class SPGSolver(ProcrustesSolver):
     """
-    Subclass containing the call to the ``spectral_setup()`` function 
-    corresponding to the Spectral Projected Gradient solver described in 
+    Subclass containing the call to the ``spectral_setup()`` function
+    corresponding to the Spectral Projected Gradient solver described in
     :cite:`FranBaza12` and :cite:`FranBazaWebe17`.
 
     Usage example:
@@ -431,11 +435,11 @@ class SPGSolver(ProcrustesSolver):
           Return list of criticality values at each iteration (for later
           comparison between solvers)
        - ``strategy``: (*default*: ``"newfw"``)
-          - ``"monotone"``: 
+          - ``"monotone"``:
              monotone trust region
-          - ``"bazfr"`` : 
+          - ``"bazfr"`` :
              nonmonotone method according to :cite:`FranBaza12`
-          - ``"newfw"`` : 
+          - ``"newfw"`` :
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
@@ -448,25 +452,25 @@ class SPGSolver(ProcrustesSolver):
           - ``2``: show outer iterations
           - ``3``: everything (except debug which is set separately)
        - ``changevar``: (*default*: ``False``)
-          boolean option to allow for a change of variables before starting the 
+          boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
 
     Output:
 
     ``solver``: ``ProcrustesSolver`` instance
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__()
         self._setoptions(options=kwargs)
         self.solvername = "spg"
-    
+
     def _setoptions(self, options):
 
         """
         Sets and validates options for the SPGSolver.
 
-        *This method should not be called directly; it is called by the 
+        *This method should not be called directly; it is called by the
         SPGSolver constructor.*
         """
 
@@ -478,7 +482,7 @@ class SPGSolver(ProcrustesSolver):
         # Keys available:
         #
         # - full_results: return list of criticality values at each iteration
-        # 
+        #
         # - strategy:
         #   > "monotone": monotone trust region
         #   > "bazfr"   : nonmonotone method according to [1]
@@ -504,8 +508,8 @@ class SPGSolver(ProcrustesSolver):
         if "full_results" not in keys:
             self.options["full_results"] = False
         elif type(self.options["full_results"]) != bool:
-            raise Exception("full_results must be a boolean")            
-        
+            raise Exception("full_results must be a boolean")
+
         if "strategy" not in keys:
             self.options["strategy"] = "newfw"
         elif self.options["strategy"] not in ("monotone", "bazfr", "newfw"):
@@ -523,7 +527,7 @@ class SPGSolver(ProcrustesSolver):
 
         if "verbose" not in keys:
             self.options["verbose"] = 1
-        elif self.options["verbose"] not in (0,1,2,3):
+        elif self.options["verbose"] not in (0, 1, 2, 3):
             raise Exception("verbose must be 0, 1, 2 or 3")
 
         if "changevar" not in keys:
@@ -539,24 +543,26 @@ class SPGSolver(ProcrustesSolver):
         Input:
 
           ``problem``: ``ProcrustesProblem`` instance
-           
+
         Output:
 
           ``result``: ``OptimizationResult`` instance
         """
-        
-        X, fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, \
-                                                       self.options)
+
+        X, fval, normgrad, exitcode, msg = spectral_setup(problem,
+                                                          self.solvername,
+                                                          self.options)
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
                "total_grad" not in problem.stats.keys():
-                raise Exception("For full results, set problem.stats[\"total_fun\"]"
-                                " and problem.stats[\"total_grad\"]")
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_grad\"]")
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
-                                    solution = X,
+                                    solution=X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
@@ -567,20 +573,21 @@ class SPGSolver(ProcrustesSolver):
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
-                                    solution = X,
+                                    solution=X,
                                     fun=fval,
                                     normgrad=normgrad,
                                     nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"])          
+                                    nfev=problem.stats["fev"])
 
         return result
+
 
 class GKBSolver(SPGSolver):
 
     """
-    Subclass containing the call to the ``spectral_setup()`` function 
-    corresponding to the Spectral Projected Gradient Method using 
-    incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in 
+    Subclass containing the call to the ``spectral_setup()`` function
+    corresponding to the Spectral Projected Gradient Method using
+    incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in
     :cite:`FranBazaWebe17`. This class extends the ``SPGSolver`` class,
     with some variation in the input and output parameters.
 
@@ -596,11 +603,11 @@ class GKBSolver(SPGSolver):
           Return list of criticality values at each iteration (for later
           comparison between solvers)
        - ``strategy``: (*default*: ``"newfw"``)
-          - ``"monotone"``: 
+          - ``"monotone"``:
              monotone trust region
-          - ``"bazfr"`` : 
+          - ``"bazfr"`` :
              nonmonotone method according to :cite:`FranBaza12`
-          - ``"newfw"`` : 
+          - ``"newfw"`` :
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
@@ -613,7 +620,7 @@ class GKBSolver(SPGSolver):
           - ``2``: show outer iterations
           - ``3``: everything (except debug which is set separately)
        - ``changevar``: (*default*: ``False``)
-          boolean option to allow for a change of variables before starting the 
+          boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
 
     Output:
@@ -622,7 +629,7 @@ class GKBSolver(SPGSolver):
 
     .. note::
 
-       Since this subclass extends SPGSolver class, we use 
+       Since this subclass extends SPGSolver class, we use
        ``SPGSolver._setoptions`` directly.
     """
 
@@ -639,19 +646,22 @@ class GKBSolver(SPGSolver):
         Input:
 
           ``problem``: ``ProcrustesProblem`` instance
-           
+
         Output:
 
           ``result``: ``OptimizationResult`` instance
         """
 
-        X, fval, normgrad, exitcode, msg = spectral_setup(problem, self.solvername, self.options)
+        X, fval, normgrad, exitcode, msg = spectral_setup(problem,
+                                                          self.solvername,
+                                                          self.options)
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
                "total_grad" not in problem.stats.keys():
-                raise Exception("For full results, set problem.stats[\"total_fun\"]"
-                                " and problem.stats[\"total_grad\"]")
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_grad\"]")
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
@@ -674,14 +684,15 @@ class GKBSolver(SPGSolver):
                                     nfev=problem.stats["fev"],
                                     blocksteps=problem.stats["blocksteps"])
 
-        return result    
+        return result
+
 
 class EBSolver(ProcrustesSolver):
 
     """
-    Subclass containing the call to the ``eb_solver()`` function 
-    corresponding to the Expansion-Balance method as described in 
-    :cite:`BergKnol84`. 
+    Subclass containing the call to the ``eb_solver()`` function
+    corresponding to the Expansion-Balance method as described in
+    :cite:`BergKnol84`.
 
     Usage example:
 
@@ -707,21 +718,21 @@ class EBSolver(ProcrustesSolver):
 
     ``solver``: ``ProcrustesSolver`` instance
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__()
         self._setoptions(options=kwargs)
         self.solvername = "eb"
 
     def solve(self, problem):
-        
+
         """
         Effectively solve the problem using the Expansion-Balance method.
 
         Input:
 
           ``problem``: ``ProcrustesProblem`` instance
-           
+
         Output:
 
           ``result``: ``OptimizationResult`` instance
@@ -732,8 +743,9 @@ class EBSolver(ProcrustesSolver):
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
                "total_crit" not in problem.stats.keys():
-                raise Exception("For full results, set problem.stats[\"total_fun\"]"
-                                " and problem.stats[\"total_crit\"]")
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_crit\"]")
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
@@ -753,24 +765,24 @@ class EBSolver(ProcrustesSolver):
                                     nfev=problem.stats["fev"])
 
         return result
-    
+
     def _setoptions(self, options):
 
         """
         Sets and validates options for the EBSolver.
 
-        *This method should not be called directly; it is called by the 
+        *This method should not be called directly; it is called by the
         EBSolver constructor.*
         """
-        
+
         # Options for the solver.
         # The user has the option of not calling this method explicitly,
-        # in which case default options are used. 
+        # in which case default options are used.
 
         # Keys available:
         #
         # - full_results: return list of criticality values at each iteration
-        # 
+        #
         # - tol: tolerance for detecting convergence
         #
         # - maxiter: maximum number of iterations allowed
@@ -799,7 +811,7 @@ class EBSolver(ProcrustesSolver):
         if "full_results" not in keys:
             self.options["full_results"] = False
         elif type(self.options["full_results"]) != bool:
-            raise Exception("full_results must be a boolean")            
+            raise Exception("full_results must be a boolean")
 
         if "tol" not in keys:
             self.options["tol"] = 1e-6
@@ -813,15 +825,16 @@ class EBSolver(ProcrustesSolver):
 
         if "verbose" not in keys:
             self.options["verbose"] = 1
-        elif self.options["verbose"] not in (0,1,2,3):
-            raise Exception("verbose must be 0, 1, 2 or 3")
+        elif self.options["verbose"] not in (0, 1):
+            raise Exception("verbose must be 0, or 1")
+
 
 class GPISolver(ProcrustesSolver):
 
     """
-    Subclass containing the call to the ``gpi_solver()`` function 
-    corresponding to the Generalized Power Iteration method as described in 
-    :cite:`NieZhanLi17`. 
+    Subclass containing the call to the ``gpi_solver()`` function
+    corresponding to the Generalized Power Iteration method as described in
+    :cite:`NieZhanLi17`.
 
     Usage example:
 
@@ -847,14 +860,14 @@ class GPISolver(ProcrustesSolver):
 
     ``solver``: ``ProcrustesSolver`` instance
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__()
         self._setoptions(options=kwargs)
         self.solvername = "gpi"
 
     def solve(self, problem):
-        
+
         """
         Effectively solve the problem using the Generalized Power Iteration
         method.
@@ -862,7 +875,7 @@ class GPISolver(ProcrustesSolver):
         Input:
 
           ``problem``: ``ProcrustesProblem`` instance
-           
+
         Output:
 
           ``result``: ``OptimizationResult`` instance
@@ -873,8 +886,9 @@ class GPISolver(ProcrustesSolver):
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
                "total_crit" not in problem.stats.keys():
-                raise Exception("For full results, set problem.stats[\"total_fun\"]"
-                                " and problem.stats[\"total_crit\"]")
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_crit\"]")
             result = OptimizeResult(success=(exitcode == 0),
                                     status=exitcode,
                                     message=msg,
@@ -894,24 +908,24 @@ class GPISolver(ProcrustesSolver):
                                     nfev=problem.stats["fev"])
 
         return result
-    
+
     def _setoptions(self, options):
 
         """
         Sets and validates options for the GPISolver.
 
-        *This method should not be called directly; it is called by the 
+        *This method should not be called directly; it is called by the
         GPISolver constructor.*
         """
-        
+
         # Options for the solver.
         # The user has the option of not calling this method explicitly,
-        # in which case default options are used. 
+        # in which case default options are used.
 
         # Keys available:
         #
         # - full_results: return list of criticality values at each iteration
-        # 
+        #
         # - tol: tolerance for detecting convergence
         #
         # - maxiter: maximum number of iterations allowed
@@ -929,7 +943,7 @@ class GPISolver(ProcrustesSolver):
         if "full_results" not in keys:
             self.options["full_results"] = False
         elif type(self.options["full_results"]) != bool:
-            raise Exception("full_results must be a boolean")            
+            raise Exception("full_results must be a boolean")
 
         if "tol" not in keys:
             self.options["tol"] = 1e-6
@@ -943,8 +957,9 @@ class GPISolver(ProcrustesSolver):
 
         if "verbose" not in keys:
             self.options["verbose"] = 1
-        elif self.options["verbose"] not in (0,1,2,3):
-            raise Exception("verbose must be 0, 1, 2 or 3")
+        elif self.options["verbose"] not in (0, 1):
+            raise Exception("verbose must be 0 or 1")
+
 
 def spectral_setup(problem, solvername, options):
 
@@ -963,61 +978,61 @@ def spectral_setup(problem, solvername, options):
     verbose = options["verbose"]
 
     m, n, p, q = problem.sizes
-    
+
     f = 0
     exitcode = 0
     normgrad = np.Inf
     residual = normgrad
 
     # X is the initial guess
-    X = np.zeros((n,p))
-    U = np.zeros((m,m))
-    V = np.zeros((n,n))
-    T = np.zeros((m,n+q)) # because of the last block
-    
+    X = np.zeros((n, p))
+    U = np.zeros((m, m))
+    V = np.zeros((n, n))
+    T = np.zeros((m, n+q))  # because of the last block
+
     # Decide whether we are going to solve by blocks or not.
-    
+
     if solvername == "spg":
         U, S, VT = sp.svd(problem.A)
         problem.stats["svd"] = problem.stats["svd"]+1
- 
-        # 
+
+        #
         # Computing starting point
-        # 
-        if options["changevar"]:        
-            # Change of variables: This is done to improve performance. 
+        #
+        if options["changevar"]:
+            # Change of variables: This is done to improve performance.
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
-            X = np.copy(VT[0:p,0:n].T)
-            Aorig = problem.A.copy()
-            A = np.zeros((m,n))
-            for i in range(0,min(m,n)):
-                A[i,i] = S[i]
+            X = np.copy(VT[0:p, 0:n].T)
+            # Aorig = problem.A.copy()
+            A = np.zeros((m, n))
+            for i in range(0, min(m, n)):
+                A[i, i] = S[i]
             Bk = np.dot(U.T, problem.B)
         else:
-            X = np.zeros((n,p))
+            X = np.zeros((n, p))
             Bk = np.copy(problem.B)
 
         if verbose > 0:
             print("                SPG Solver")
-            
-        exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n, \
-                                                                X, problem.A, \
-                                                                Bk, solvername,\
+
+        exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
+                                                                X, problem.A,
+                                                                Bk, solvername,
                                                                 options)
 
         problem.stats["nbiter"] = nbiter
-        
+
         if options["changevar"]:
             # Going back to the original variable
             Xk = np.dot(VT.T, X)
         else:
             Xk = np.copy(X)
-            
+
         R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
         residual = sp.norm(R, 'fro')**2
-        
+
     elif solvername == "gkb":
 
         problem.stats["blocksteps"] = 0
@@ -1033,7 +1048,7 @@ def spectral_setup(problem, solvername, options):
             # T = Ak is the partial bidiagonalization of A
             # [U,Ak,V] = bidiag3_block(A,B,q,steps);
             # In blockbidiag, we do a loop with i = partial+1,nsteps;
-            # this is the block we are currently working on 
+            # this is the block we are currently working on
 
             # Current block starts at (partial+1)*s, ends at nsteps*s
             partial = k-1
@@ -1042,34 +1057,34 @@ def spectral_setup(problem, solvername, options):
             # largedim and smalldim are the current dimensions of our problem:
             # A(largedim, smalldim), B(largedim, q), X(smalldim, p)
             largedim = q*(k+1)
-            #if largedim < m:
-            # Incomplete bidiagonalization:
-            # T(q*(k+1),q*k), U(m,q*(k+1)), V(n,q*k)
+            # if largedim < m:
+            #    Incomplete bidiagonalization:
+            #    T(q*(k+1),q*k), U(m,q*(k+1)), V(n,q*k)
             smalldim = q*k
-            #else:
-            # smalldim = m # = n
+            # else:
+            #    smalldim = m # = n
 
             if k < maxsteps:
                 # B1 is a p by p block used in the computation of the new
                 # BLOBOP residual
-                
-                U, V, T, B1, reorth = blockbidiag(problem, U, V, T, \
+
+                U, V, T, B1, reorth = blockbidiag(problem, U, V, T,
                                                   nsteps, partial)
 
                 # Akp1 is ok
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q]
 
                 if options["verbose"] > 2:
-                    print("\n       Finished bidiag: Reorth: {}\n" \
+                    print("\n       Finished bidiag: Reorth: {}\n"
                           .format(reorth))
             else:
                 largedim = q*k
                 smalldim = q*k
-                
+
             if options["verbose"] > 0:
-                print(" ----> GKB Iteration {}: Tk is {}x{}" \
+                print(" ----> GKB Iteration {}: Tk is {}x{}"
                       .format(k, largedim, smalldim))
-          
+
             # A(m,n) X(n,p) C(p,q) - B(m,q)
 
             debug = False
@@ -1079,89 +1094,90 @@ def spectral_setup(problem, solvername, options):
                 print("V = {}\n".format(V[0:n, 0:smalldim]))
                 AV = np.dot(problem.A, V[0:n, 0:smalldim])
                 prod = np.dot(U[0:m, 0:largedim].T, AV)
-                print("T - UT*A*V = {}\n" \
+                print("T - UT*A*V = {}\n"
                       .format(T[0:largedim, 0:smalldim] - prod))
 
             if options["verbose"] > 2:
                 AV = np.dot(problem.A, V[0:n, 0:smalldim])
                 prod = np.dot(U[0:m, 0:largedim].T, AV)
-                print("       MaxError = {}\n" \
-                      .format(np.max(T[0:largedim,0:smalldim] - prod)))
+                print("       MaxError = {}\n"
+                      .format(np.max(T[0:largedim, 0:smalldim] - prod)))
 
             # Bk(q*(k+1),q) = U(m,q*(k+1))'*B(m,q)
             Bk = np.dot(U[0:m, 0:largedim].T, problem.B)
-            
+
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
-            
+
             if k == 1:
-                X[0:smalldim,0:p] = np.copy(V[0:smalldim,0:p])
+                X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
             else:
                 # X(1:q*(k-1),1:p) = result from last run
-                X[q*(k-1):smalldim,0:p] = np.zeros((smalldim-q*(k-1), p))
+                X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
 
-            VT = np.zeros((n,n))
-            VT[0:smalldim,0:n] = np.copy(V[0:n,0:smalldim].T)
+            VT = np.zeros((n, n))
+            VT[0:smalldim, 0:n] = np.copy(V[0:n, 0:smalldim].T)
 
             # temp is old normdummyg
             exitcode, f, X[0:smalldim, 0:p], temp, outer, msg \
-                = spectral_solver(problem, largedim, smalldim, \
-                                  X[0:smalldim,0:p], \
-                                  T[0:largedim,0:smalldim], \
-                                  Bk[0:largedim,0:q], \
+                = spectral_solver(problem, largedim, smalldim,
+                                  X[0:smalldim, 0:p],
+                                  T[0:largedim, 0:smalldim],
+                                  Bk[0:largedim, 0:q],
                                   solvername, options)
 
-            problem.stats["nbiter"] = problem.stats["nbiter"] \
-                                      + (largedim/m)*outer
-            
+            problem.stats["nbiter"] = (problem.stats["nbiter"] +
+                                       (largedim/m)*outer)
+
             Yk = np.copy(X[0:smalldim, 0:p])
-            Xk = np.dot(V[0:n,0:smalldim], Yk)
-            
+            Xk = np.dot(V[0:n, 0:smalldim], Yk)
+
             R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
             residual = sp.norm(R, 'fro')**2
             residuals.append(residual)
-            
+
             grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-            
-            gradproj = np.dot(Xk, np.dot(Xk.T, grad) + np.dot(grad.T,Xk)) \
-                       - 2.0*grad
+
+            gradproj = np.dot(Xk, np.dot(Xk.T, grad) + np.dot(grad.T, Xk))
+            - 2.0*grad
             normgrad = sp.norm(gradproj, 'fro')
 
             if options["verbose"] > 1:
-                print("\n       Gradient norm       = {}" \
+                print("\n       Gradient norm       = {}"
                       .format(normgrad))
-                print("       Residual norm       = {}\n"   \
+                print("       Residual norm       = {}\n"
                       .format(residual))
 
-            ###################################### BLOBOP
+            # ##################################### BLOBOP
             if k < maxsteps:
-                calB = np.zeros((largedim,p))
-                calB[0:p,0:p] = B1
+                calB = np.zeros((largedim, p))
+                calB[0:p, 0:p] = B1
                 Tk = T[0:largedim, 0:smalldim]
-                res1 = np.dot((np.eye(smalldim,smalldim) - np.dot(Yk,Yk.T)), \
-                              np.dot(Tk.T, np.dot(Tk,Yk) - calB))
+                res1 = np.dot((np.eye(smalldim, smalldim) - np.dot(Yk, Yk.T)),
+                              np.dot(Tk.T, np.dot(Tk, Yk) - calB))
                 resBlobop1 = sp.norm(res1, 'fro')
-            
+
                 # Z(p)(k) is the last pxp block of Yk.
                 Zpk = np.copy(Yk[(k-1)*p:smalldim, 0:p])
                 Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
                 Vk = V[0:n, 0:smalldim]
-                
-                prod1 = np.eye(n,n) - np.dot(Vk, \
-                                             np.dot(Yk, np.dot(Yk.T, Vk.T)))
-                prod2 = np.dot(V[0:n, smalldim:smalldim+p], \
+
+                prod1 = np.eye(n, n) - np.dot(Vk,
+                                              np.dot(Yk, np.dot(Yk.T, Vk.T)))
+                prod2 = np.dot(V[0:n, smalldim:smalldim+p],
                                np.dot(Akp1, np.dot(Bkp1, Zpk)))
                 res2 = np.dot(prod1, prod2)
                 resBlobop2 = sp.norm(res2, "fro")
-                
+
                 newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
                 if options["verbose"] > 1:
-                    print("       New BLOBOP Residual = {}\n".format(newResidual))
-            ###################################### BLOBOP
-            
+                    print("       New BLOBOP Residual = {}\n"
+                          .format(newResidual))
+            # ##################################### BLOBOP
+
             k = k + 1
-            
+
         # end while
-        
+
         problem.stats["blocksteps"] = k-1
 
     else:
@@ -1175,25 +1191,26 @@ def spectral_setup(problem, solvername, options):
 
     return Xk, f, normgrad, exitcode, msg
 
+
 def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
-    """ 
+    """
     Nonmonotone Spectral Projected Gradient solver for problems of the type
 
        .. math::
 
           \\min \\lVert AXC - B\\rVert_F^2  \\qquad s.t. X^TX = I
 
-    The method is described in references :cite:`FranBaza12` and 
-    :cite:`FranBazaWebe17`, and we implement a few variations (including a 
-    monotone version, a nonmonotone version using the strategy described in 
-    :cite:`FranBaza12`, and a nonmonotone version using the strategy 
-    described in :cite:`FranBazaWebe17`; check below for more details on how 
+    The method is described in references :cite:`FranBaza12` and
+    :cite:`FranBazaWebe17`, and we implement a few variations (including a
+    monotone version, a nonmonotone version using the strategy described in
+    :cite:`FranBaza12`, and a nonmonotone version using the strategy
+    described in :cite:`FranBazaWebe17`; check below for more details on how
     to select these different algorithms).
 
     This function is called by ``spectral_solver`` from both GKBSolver and
     SPGSolver, with different parameters.
-    
+
     Input:
 
     - ``problem``: ``ProcrustesProblem`` instance
@@ -1208,21 +1225,21 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     - ``A``: ``ndarray(largedim, smalldim)``
     - ``B``: ``ndarray(largedim, q)``
     - ``solvername``: str
-       Takes values ``spg`` or ``gkb`` (used to decide if ``full_results`` can 
+       Takes values ``spg`` or ``gkb`` (used to decide if ``full_results`` can
        be reported).
     - ``options``: ``dict``
        Solver options. Keys available are:
           - ``maxiter``: ``int``
              Maximum number of iterations allowed
           - ``strategy``: ``str``
-             ``monot`` (Monotone strategy), ``bazfr`` (Nonmonotone strategy 
-             described in :cite:`FranBaza12`) or ``newfw`` (Nonmonotone strategy 
-             described in :cite:`FranBazaWebe17`)
+             ``monot`` (Monotone strategy), ``bazfr`` (Nonmonotone strategy
+             described in :cite:`FranBaza12`) or ``newfw`` (Nonmonotone
+             strategy described in :cite:`FranBazaWebe17`)
           - ``verbose``: ``int``
              Can take values in (0,1,2,3)
           - ``gtol``: ``float``
              Tolerance for convergence.
-        
+
     Output:
 
        - ``exitcode``: ``int``
@@ -1236,38 +1253,39 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
        - ``outer``: ``int``
           Final number of outer iterations performed.
     """
-    
+
     # Setup
 
     # A(largedim, smalldim)
     # B(largedim, q)
     # problem.C(p, q)
     # X(smalldim, p)
-    
-    m, n, p, q = problem.sizes # original sizes, not reduced
-    
-    # chi determines by which factor is rho increased at each 
+
+    m, n, p, q = problem.sizes  # original sizes, not reduced
+
+    # chi determines by which factor is rho increased at each
     # unsuccessful iteration
-    chi = 5.0 # juliano
-    
-    #cost = [None]*(options["maxiter"]+1)
+    chi = 5.0  # juliano
+
+    # cost = [None]*(options["maxiter"]+1)
     cost = []
-    
-    # "total_fun" and "total_grad" store the criticality info for each iteration
+
+    # "total_fun" and "total_grad" store the criticality info
+    # for each iteration
     if options["full_results"] and solvername == "spg":
         problem.stats["total_fun"] = []
         problem.stats["total_grad"] = []
 
     # Barzilai-Borwein parameter
     sigma_min = 1.0e-10
-    
+
     # Sufficient decrease parameter for trust region
     # (trratio must be larger than beta1)
-    beta1 = 1.0e-10 # beta1 = 1.0e-4_wp, beta1 = 0.5_wp
-    
+    beta1 = 1.0e-10  # beta1 = 1.0e-4_wp, beta1 = 0.5_wp
+
     # memory is the nonmonotone parameter, used to determine how many
     # iterations will be used in the BAZFR strategy to compare the current
-    # objective function 
+    # objective function
     # with past values.
     if options["strategy"] == "monot":
         memory = 1
@@ -1275,19 +1293,19 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         memory = 10
 
     # Lu approximates the Lipschitz constant for the gradient of f
-    Lu = 2.0*sp.norm(np.dot(problem.C, problem.C.T), 'fro') \
-         *sp.norm(np.dot(A.T, A), 'fro')
+    Lu = 2.0*sp.norm(
+        np.dot(problem.C, problem.C.T), 'fro')*sp.norm(np.dot(A.T, A), 'fro')
 
     if options["verbose"] > 2:
         print("\n          Lu = {}\n".format(Lu))
-        
+
     # R is the residual, norm(R,fro) is the cost.
     # R = A*X*C-B
     R = np.dot(A, np.dot(X, problem.C)) - B
 
     cost.append(sp.norm(R, 'fro')**2)
 
-    #problem.stats["fev"] = problem.stats["fev"] + 1
+    # problem.stats["fev"] = problem.stats["fev"] + 1
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
     if options["strategy"] == "newfw":
@@ -1302,7 +1320,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     if options["full_results"] and solvername == "spg":
         problem.stats["total_fun"].append(f)
         problem.stats["total_grad"].append(normg)
-    
+
     if options["verbose"] > 1:
         print("\n          OUTER ITERATION 0:\n")
         print("             f = {}".format(f))
@@ -1310,30 +1328,32 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     elif options["verbose"] == 1:
         print("  nbiter         f              cost             normg")
         print("===========================================================")
-        print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}".format(0, f, f, normg))        
-       
-    #problem.stats["nbiter"] = 0
+        print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}".
+              format(0, f, f, normg))
+
+    # problem.stats["nbiter"] = 0
     outer = 0
 
     # If flag_while, then continue cycling.
     flag_while = True
-    oldbigres = 0.0
     ftrial = 0.0
+    Xold = X.copy()
 
-    while normg > options["gtol"] and flag_while \
-          and outer < options["maxiter"]:
-        
+    while (normg > options["gtol"]
+           and flag_while
+           and outer < options["maxiter"]):
+
         # Computation of the trust-region step parameters
         if outer == 0:
             sigma_bb = 0.5
         else:
             step = np.copy(X - Xold)
-            AstepC = np.dot(A, np.dot(step, problem.C))            
+            AstepC = np.dot(A, np.dot(step, problem.C))
             sigma_bb = (sp.norm(AstepC, 'fro')**2)/(sp.norm(step, 'fro')**2)
 
         # sigma_bb is the Barzilai-Borwein parameter.
         sigma = max(sigma_min, sigma_bb)
-        
+
         trratio = beta1/2.0
 
         # rho is the regularization parameter for the quadratic model
@@ -1341,32 +1361,32 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         if options["verbose"] > 2:
             print("             sigma = rho = {}\n".format(sigma))
         nbinnerit = 0
-            
+
         # Inner iteration
         # =============================================================
 
         while flag_while and trratio < beta1:
-          
+
             if options["verbose"] > 2:
                 print("\n             INNER ITERATION {}:\n".format(nbinnerit))
                 print("             f = {}\n".format(cost[outer]))
                 print("             normg = {}\n".format(normg))
 
             # Solving the subproblem: Xtrial, the solution to the subproblem,
-            # is defined as 
+            # is defined as
             # Xtrial = U*V' = UW*VWT
             # where
             # [U,S,V] = svd(W,0)
             # where the above line is the "economy size" svd decomposition
             # of W, defined as
-            
+
             W = np.copy(X - (1.0/(rho + sigma))*grad)
 
             # If X is m-by-n with m > n, then svd(X,0) computes only the first
             # n columns of U and S is (n,n)
 
             UW, SW, VWT = sp.svd(W, full_matrices=False)
-            #UW, SW, VWT = sp.svd(W)
+            # UW, SW, VWT = sp.svd(W)
 
             # W(smalldim,p)
             # UW(smalldim,min(smalldim,p))
@@ -1377,30 +1397,30 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
             # Computing constraint violation to see if the subproblem
             # solution has been satisfactorily solved
-            constraintviolation = np.abs(sp.norm(np.dot(Xtrial.T, Xtrial), \
+            constraintviolation = np.abs(sp.norm(np.dot(Xtrial.T, Xtrial),
                                                  np.inf) - 1.0)
 
             if constraintviolation >= 1.0e-5:
                 msg = _status_message['infeasible']
                 print('Warning: ' + msg)
                 return
-        
+
             # Rtrial = A*Xtrial*C - B
             Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
-            
+
             # ftrial = norm(Rtrial, fro)**2
             ftrial = sp.norm(Rtrial, 'fro')**2
-                
-            #problem.stats["fev"] = problem.stats["fev"]+1
+
+            # problem.stats["fev"] = problem.stats["fev"]+1
             problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
-        
+
             if options["verbose"] > 2:
                 print("             ftrial = {}\n".format(ftrial))
 
             ared = f - ftrial
-            pred = - np.trace(np.dot(grad.T, (Xtrial-X)) \
+            pred = - np.trace(np.dot(grad.T, (Xtrial-X))
                               - (sigma/2.0)*sp.norm(Xtrial-X, 'fro')**2)
-            
+
             if np.abs(pred) < 1.0e-15:
                 msg = _status_message['smallpred']
                 print('Warning: ' + msg)
@@ -1408,24 +1428,24 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
                 flag_while = False
             else:
                 trratio = ared/pred
-            
+
             if pred < 0:
                 msg = _status_message['negativepred']
                 print('Warning: ' + msg)
                 flag_while = False
                 # trratio = 0.0
-                
+
             if options["verbose"] > 2:
                 print("             ared = {}\n".format(ared))
                 print("             pred = {}\n".format(pred))
                 print("             trratio = {}\n".format(trratio))
-                    
+
             if trratio > beta1:
                 if options["verbose"] > 2:
                     print("\n             INNER ITERATION FINISHED: success\n")
                     print("             trratio = {}\n".format(trratio))
                     print("             beta1 = {}\n".format(beta1))
-            
+
             # Below is equation (15) from (Francisco, Bazan, 2012)
             if flag_while:
                 rho = chi*rho
@@ -1433,27 +1453,27 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
                     if options["verbose"] > 1:
                         print("             WARNING: Using Lu "
                               " parameter = {} to ensure sufficient decrease "
-                              " (inner {} and outer = {})\n"\
+                              " (inner {} and outer = {})\n"
                               .format(Lu, nbinnerit, outer))
                     sigma = Lu
-                
+
                 if options["verbose"] > 2:
                     print("             rho = {}\n".format(rho))
                     print("             sigma = {}\n".format(sigma))
-            
+
                 nbinnerit = nbinnerit + 1
-            
+
                 if nbinnerit >= options["maxiter"]:
                     msg = _status_message['maxiter']
                     print('Warning: ' + msg + '(inner loop)')
-                    trratio = 1.0 # just to leave the while
-                    
+                    trratio = 1.0  # just to leave the while
+
         # end while innerit ================================================
 
         Xold = X.copy()
         X = Xtrial.copy()
         R = Rtrial.copy()
-        
+
         cost.append(ftrial)
         # TODO: fix this (refactor?)
         # Compute cost
@@ -1469,7 +1489,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
             qold = quot
             quot = eta*qold + 1.0
             f = (eta*qold*f+ftrial)/quot
-                  
+
         grad, normg = optimality(A, problem.C, X, R)
         problem.stats["gradient"] = problem.stats["gradient"] + 1
         if options["full_results"] and solvername == "spg":
@@ -1477,21 +1497,18 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
             problem.stats["total_grad"].append(normg)
 
         if options["verbose"] > 2:
-            print("\n          OUTER ITERATION {}:\n" \
+            print("\n          OUTER ITERATION {}:\n"
                   .format(outer+1))
             print("             f = {}".format(f))
             print("             normg = {}".format(normg))
         elif options["verbose"] == 1:
             # outer f normg innerits
-            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".format(outer+1, \
-                                                                f, \
-                                                                cost[outer+1], \
-                                                                normg,\
-                                                                nbinnerit))
-            
+            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".
+                  format(outer+1, f, cost[outer+1], normg, nbinnerit))
+
         outer = outer+1
 
-    #end while 
+    # end while
 
     if outer >= options["maxiter"]:
         msg = _status_message["maxiter"]
@@ -1503,26 +1520,27 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
     # Since we already updated nbiter, f is now cost[outer] instead of
     # cost[outer+1]
-    
+
     f = cost[outer]
-    
+
     return exitcode, f, X, normg, outer, msg
-    
+
+
 def blockbidiag(problem, U, V, T, steps, partial):
-    
-    """ 
+
+    """
     This function builds block matrices U, V orthogonal such that
     U'*A*V=T, where T is bidiagonal.
     A(m,n), T(m,n), U(m,m), V(n,n), B(m,s)
     """
 
     m, n, s, q = problem.sizes
-    
+
     # The current Lanczos step goes from (partial+1)*s:steps*s
-    
+
     # Tolerance for reorthogonalization
     gstol = 1.0e-8
-    
+
     debug = False
     # steps = min(m,n)/s-1
     reorth = 0
@@ -1544,8 +1562,8 @@ def blockbidiag(problem, U, V, T, steps, partial):
     #                                   both Q and R (‘full’, default), only R
     #                                   (‘r’) or both Q and R but computed in
     #                                   economy-size (‘economic’). The final
-    #                                   option ‘raw’ (added in Scipy 0.11) makes
-    #                                   the function return two matrices
+    #                                   option ‘raw’ (added in Scipy 0.11)
+    #                                   makes the function return two matrices
     #                                   (Q, TAU) in the internal format used
     #                                   by LAPACK.
     # Returns:
@@ -1557,28 +1575,29 @@ def blockbidiag(problem, U, V, T, steps, partial):
 
     # R.shape = BB.shape (m,q)
     Q, R = sp.qr(BB, overwrite_a=True, mode='economic')
-    B1 = np.copy(R[0:s,0:s])
+    B1 = np.copy(R[0:s, 0:s])
     # (obs: B1[0:s,0:s] does not go into T!)
     # B1 is needed for the new residual computation of BLOBOP
-    
+
     if partial == 0:
         # This is the first block
-        U[0:m,0:s] = np.copy(Q[0:m,0:s])
+        U[0:m, 0:s] = np.copy(Q[0:m, 0:s])
 
         # Now, we compute the QR decomposition of A.T*U[:,0:s]
         # to find V[:,0:s]*T[0:s,0:s] = A.T*U[:,0:s]
 
-        Q, R = sp.qr(np.dot(problem.A.T, U[0:m,0:s]), overwrite_a=True, \
+        Q, R = sp.qr(np.dot(problem.A.T, U[0:m, 0:s]), overwrite_a=True,
                      mode='economic')
-        V[0:n,0:s] = np.copy(Q[0:n,0:s])
+        V[0:n, 0:s] = np.copy(Q[0:n, 0:s])
 
         # The first block of T is A{1}.T, which is R above.
-        T[0:s,0:s] = np.copy(R[0:s,0:s].T)
+        T[0:s, 0:s] = np.copy(R[0:s, 0:s].T)
 
     # Main loop
     # i indicates how many blocks have been used.
     for i in range(partial+1, steps+1):
-        # i indicates what block row we are computing (starting from 2, since A1 has been computed above)
+        # i indicates what block row we are computing (starting from 2,
+        # since A1 has been computed above)
         inds = s*i
 
         # U{i}   = U[:, inds-s:inds]
@@ -1592,8 +1611,8 @@ def blockbidiag(problem, U, V, T, steps, partial):
         # reorthogonalization to build these matrices.
 
         # First, we take the matrix that should be decomposed into Q and R:
-        prod = np.dot(problem.A, V[0:n, inds-s:inds]) \
-               - np.dot(U[0:m, inds-s:inds], T[inds-s:inds, inds-s:inds])
+        prod = (np.dot(problem.A, V[0:n, inds-s:inds])
+                - np.dot(U[0:m, inds-s:inds], T[inds-s:inds, inds-s:inds]))
         # prod is (m,s)
 
         # Next, we apply the modified Gram-Schmidt algorithm with complete
@@ -1603,18 +1622,19 @@ def blockbidiag(problem, U, V, T, steps, partial):
         Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth)
 
         if debug:
-            print("Erro bidiaggs = {}\n" \
-                  .format(sp.norm(np.dot(Uip1[0:m,inds:inds+s], Bip1) - prod)))
-        
+            print("Erro bidiaggs = {}\n"
+                  .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
+                                  - prod)))
+
         # Now, the blocks go into U and T.
         U = np.copy(Uip1)
         T[inds:inds+s, inds-s:inds] = np.copy(Bip1)
 
         # Same for V:
         # First, we take the matrix that should be decomposed into Q and R:
-        # V_{i+1}A{i+1} = A.T*U_{i+1} - V_iB_{i+1}.T = prod[0:n,0:s]         
-        prod = np.dot(problem.A.T, U[0:m, inds:inds+s]) \
-               - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T)
+        # V_{i+1}A{i+1} = A.T*U_{i+1} - V_iB_{i+1}.T = prod[0:n,0:s]
+        prod = (np.dot(problem.A.T, U[0:m, inds:inds+s])
+                - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T))
 
         Vmat = np.copy(V)
         Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth)
@@ -1622,28 +1642,29 @@ def blockbidiag(problem, U, V, T, steps, partial):
         T[inds:inds+s, inds:inds+s] = np.copy(Aip1.T)
 
         # TODO: This should be a test!
-        if debug and options["verbose"] > 1:
-            debug_bidiag(i, s, inds, A, B, U, V, T)
-            
-    if debug and options["verbose"] > 1:
-        print("\n        MaxError: max(T-U'*A*V) = {}\n" \
-              .format(np.max(T[0:m,0:n] - np.dot(U.T,np.dot(problem.A,V)))))
-        print("\n        max(V'*V - I) = {}\n" \
-              .format(np.max(np.dot(V.T, V) - np.eye(n,n))))
-        print("\n        max(U'*U - I) = {}\n" \
-              .format(np.max(np.dot(U.T, U) - np.eye(m,m))))
-        
+        if debug and problem.options["verbose"] > 1:
+            debug_bidiag(i, s, inds, problem.A, problem.B, U, V, T)
+
+    if debug and problem.options["verbose"] > 1:
+        print("\n        MaxError: max(T-U'*A*V) = {}\n"
+              .format(np.max(T[0:m, 0:n] - np.dot(U.T, np.dot(problem.A, V)))))
+        print("\n        max(V'*V - I) = {}\n"
+              .format(np.max(np.dot(V.T, V) - np.eye(n, n))))
+        print("\n        max(U'*U - I) = {}\n"
+              .format(np.max(np.dot(U.T, U) - np.eye(m, m))))
+
     # Output matrices: U(m,m), V(n,n), T(m,n), B1(s,s)
     return U, V, T, B1, reorth
 
+
 def bidiaggs(inds, prod, mat, gstol, reorth):
 
-    """ Computing one block of blockbidiag at a time: 
-    this routine computes the QR decomposition of A using 
+    """ Computing one block of blockbidiag at a time:
+    this routine computes the QR decomposition of A using
     the modified Gram-Schmidt algorithm with reorthogonalizations. """
-    
+
     s = prod.shape[1]
-    R = np.zeros((s,s))
+    R = np.zeros((s, s))
     A = np.copy(prod)
 
     # This routine can be called twice inside blockbidiag:
@@ -1652,7 +1673,7 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
     # We are computing a submatrix of mat which is Q for prod = QR
     # However, we need the complete mat here because we will
     # reorthogonalize, when necessary, against all columns of Umat.
-    
+
     # Now, we will reorthogonalize each column k of prod with respect to all
     # previous columns
     for k in range(0, s):
@@ -1662,7 +1683,7 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
         # Reorthogonalization with respect to all previous columns of U:
         # the code below is equivalent to
         # for j in range(0, indspk):
-        #    prod[:, k] = prod[:, k] - np.dot(prod[:, k], mat[:, j]) * mat[:, j]
+        #   prod[:, k] = prod[:, k] - np.dot(prod[:, k], mat[:, j]) * mat[:, j]
         # We have rearranged so that
         #
         # prod[:,k] = prod[:,k] - sum(mat*diag(prod[:,k]'*mat))
@@ -1688,8 +1709,8 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
             # TODO CHECK THIS
             # Trying out not using random numbers when
             # reorthogonalizing to keep results controlled
-            #A[:,k] = np.zeros((A.shape[0],))
-            #A[k,k] = 1.0
+            # A[:,k] = np.zeros((A.shape[0],))
+            # A[k,k] = 1.0
             for j in range(0, A.shape[0]):
                 A[j, k] = np.random.randn(1)
 
@@ -1714,25 +1735,31 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
 
     return mat, R, reorth
 
-#TODO move this to tests? how?
-def debug_bidiag(i, s, inds, A, B, U, V, T):
-    print("\n       ********* DEBUGGING BLOCKBIDIAG: ************\n")
-    # We will check the recurrence relations listed in Karimi, Toutounian 
-    print("\n        Iteration i = {}, inds = {}\n".format(i, inds))
-    E1 = np.zeros((inds+s, s))
-    E1[0:s, :] = np.eye(s,s)
-    errorRecurrence1 = sp.norm(B-np.dot(U[:,0:inds+s], np.dot(E1, B1)))
-    print("\n        B - UU(i+1)*E1*B1 = {}\n".format(errorRecurrence1))
-    #
-    # AVk = Ukp1Tk
-    errorRecurrence2 = sp.norm(np.dot(A, V[:, 0:inds]) - np.dot(U[:, 0:inds+s], T[0:inds+s, 0:inds]))
-    print("\n        A*VV(i) - UU(i+1)T(i) = {}\n".format(errorRecurrence2))
-    #
-    # ATUkp1 = VkTkT + Vkp1Akp1Ekp1T
-    Eip1 = np.zeros((inds+s, s))
-    Eip1[inds:inds+s, :] = np.eye(s,s)
-    errorRecurrence3 = sp.norm(np.dot(A.T, U[:, 0:inds+s]) - np.dot(V[:, 0:inds], T[0:inds+s, 0:inds].T) - np.dot(V[:, inds:inds+s], np.dot(Aip1, Eip1.T)))
-    print("\n        A.T*UU(i+1) - VV(i)*T(i).T - V(i+1)*A(i+1)*E(i+1).T = {}\n".format(errorRecurrence3))
+
+# TODO move this to tests? how?
+# def debug_bidiag(i, s, inds, A, B, U, V, T):
+#     print("\n       ********* DEBUGGING BLOCKBIDIAG: ************\n")
+#     # We will check the recurrence relations listed in Karimi, Toutounian
+#     print("\n        Iteration i = {}, inds = {}\n".format(i, inds))
+#     E1 = np.zeros((inds+s, s))
+#     E1[0:s, :] = np.eye(s,s)
+#     errorRecurrence1 = sp.norm(B-np.dot(U[:,0:inds+s], np.dot(E1, B1)))
+#     print("\n        B - UU(i+1)*E1*B1 = {}\n".format(errorRecurrence1))
+#     #
+#     # AVk = Ukp1Tk
+#     errorRecurrence2 = sp.norm(np.dot(A, V[:, 0:inds])
+#                                - np.dot(U[:, 0:inds+s], T[0:inds+s, 0:inds]))
+#     print("\n        A*VV(i) - UU(i+1)T(i) = {}\n".format(errorRecurrence2))
+#     #
+#     # ATUkp1 = VkTkT + Vkp1Akp1Ekp1T
+#     Eip1 = np.zeros((inds+s, s))
+#     Eip1[inds:inds+s, :] = np.eye(s,s)
+#     errorRecurrence3 = sp.norm(np.dot(A.T, U[:, 0:inds+s])
+#                                - np.dot(V[:, 0:inds], T[0:inds+s, 0:inds].T)
+#                                - np.dot(V[:, inds:inds+s],
+#                                         np.dot(Aip1, Eip1.T)))
+#     print("\n        A.T*UU(i+1)-VV(i)*T(i).T-V(i+1)*A(i+1)*E(i+1).T = {}\n"
+#           .format(errorRecurrence3))
 
 def optimality(A, C, X, R):
     # Test optimality of X
@@ -1741,19 +1768,20 @@ def optimality(A, C, X, R):
     normg = sp.norm(gradproj, 'fro')
     return grad, normg
 
+
 def eb_solver(problem, options):
-    
+
     """
     Expansion-Balance solver
 
     Here we consider always :math:`m=n`, :math:`p=q`, :math:`C=I`.
     Thus the problem has to be
-    
+
        .. math::
-     
-          \\min \\lVert A_{n\\times n}X_{n\\times p}-B_{n\\times p}\\rVert_F^2 
-          \\qquad s.t. X^TX=I_{p\\times p}    
-    
+
+          \\min \\lVert A_{n\\times n}X_{n\\times p}-B_{n\\times p}\\rVert_F^2
+          \\qquad s.t. X^TX=I_{p\\times p}
+
     References: :cite:`ZhanDu06` and :cite:`BergKnol84`.
     """
 
@@ -1777,10 +1805,10 @@ def eb_solver(problem, options):
     # Bhat = AE
     # was suggested in ref. [ZhanDu06] with E the eigenvector matrix of A.T*A
     # corresponding to its n-k smallest eigenvalues."
-        
-    #G(n,n) = [X(n,p), H(n,n-p)]
 
-    Bhat = np.zeros((n,n-p))
+    # G(n,n) = [X(n,p), H(n,n-p)]
+
+    Bhat = np.zeros((n, n-p))
 
     B = np.concatenate((problem.B, Bhat), axis=1)
 
@@ -1789,14 +1817,14 @@ def eb_solver(problem, options):
     problem.stats["svd"] = problem.stats["svd"] + 1
     G = np.dot(U, VT)
     # X = np.copy(G[0:n, 0:p])
-    X = np.zeros((n,p))
-    
+    X = np.zeros((n, p))
+
     f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
     problem.stats["fev"] = problem.stats["fev"] + 1
     if options["full_results"]:
         problem.stats["total_fun"].append(f)
         problem.stats["total_crit"].append(f)
-        
+
     if options["verbose"] > 0:
         print("                     EB Solver")
         print("  nbiter         f             fold-f          tol*fold")
@@ -1813,33 +1841,34 @@ def eb_solver(problem, options):
         H = G[0:n, p:n]
         AH = np.dot(problem.A, H)
         B = np.concatenate((problem.B, AH), axis=1)
-            
+
         # Find the SVD of A.T*B = USV.T, and define G = U*V.T
         U, S, VT = sp.svd(np.dot(problem.A.T, B))
         problem.stats["svd"] = problem.stats["svd"]+1
         G = np.dot(U, VT)
         X = np.copy(G[0:n, 0:p])
-        #X = 0*G[0:n, 0:p]
+        # X = 0*G[0:n, 0:p]
 
         fold = f
         f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
         problem.stats["fev"] = problem.stats["fev"]+1
-        
+
         # Check for convergence
         criticality = (np.abs(fold - f) < options["tol"]*fold) or \
-                      (np.abs(f) < options["tol"]) 
+                      (np.abs(f) < options["tol"])
 
         if options["full_results"]:
             problem.stats["total_fun"].append(f)
-            problem.stats["total_crit"].append(min(np.abs(fold-f)/np.abs(fold), \
+            problem.stats["total_crit"].append(min(np.abs(fold-f)/np.abs(fold),
                                                    np.abs(fold)))
 
         # Print and loop back
         nbiter = nbiter + 1
-        
+
         if options["verbose"] > 0:
-            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}".format(nbiter, f, fold-f, options["tol"]*fold))
-                
+            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}"
+                  .format(nbiter, f, fold-f, options["tol"]*fold))
+
     # ===================================================== end while
 
     if nbiter >= options["maxiter"]:
@@ -1849,10 +1878,11 @@ def eb_solver(problem, options):
     else:
         exitcode = 0
         msg = _status_message["success"]
-       
+
     problem.stats["nbiter"] = nbiter
-            
+
     return X, f, exitcode, msg
+
 
 def gpi_solver(problem, options):
 
@@ -1863,9 +1893,9 @@ def gpi_solver(problem, options):
     Thus the problem has to be
 
        .. math::
-     
-          \\min \\lVert A_{m\\times n}X_{n\\times p}-B_{m\\times p}\\rVert_F^2 
-          \\qquad s.t. X^TX=I_{p\\times p}    
+
+          \\min \\lVert A_{m\\times n}X_{n\\times p}-B_{m\\times p}\\rVert_F^2
+          \\qquad s.t. X^TX=I_{p\\times p}
 
     References: :cite:`NieZhanLi17`
     """
@@ -1882,16 +1912,16 @@ def gpi_solver(problem, options):
     msg = ''
 
     # Initialization (X = I)
-    X = np.zeros((n,p))
-    #X[0:p,0:p] = np.eye(p,p)
-    #X = problem.Xsol
+    X = np.zeros((n, p))
+    # X[0:p,0:p] = np.eye(p,p)
+    # X = problem.Xsol
 
     E = np.dot(problem.A.T, problem.A)
     # gamma is a constant times the largest eigenvalue of E, such that
     # gamma*I - E is positive definite.
     vals = spl.eigs(E, k=1, return_eigenvectors=False)
     gamma = vals[0]
-    H = 2*(gamma*np.eye(n,n) - E)
+    H = 2*(gamma*np.eye(n, n) - E)
     ATB = 2*np.dot(problem.A.T, problem.B)
 
     f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
@@ -1911,7 +1941,7 @@ def gpi_solver(problem, options):
     while not criticality and nbiter < options["maxiter"]:
 
         M = np.dot(H, X) + ATB
-        
+
         # Find the SVD of M
         U, S, VT = sp.svd(M, full_matrices=False)
         problem.stats["svd"] = problem.stats["svd"]+1
@@ -1920,20 +1950,22 @@ def gpi_solver(problem, options):
         fold = f
         f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
         problem.stats["fev"] = problem.stats["fev"]+1
-        
+
         # Check for convergence
-        criticality = (np.abs(fold - f) < options["tol"]) or (np.abs(f) < options["tol"])
+        criticality = ((np.abs(fold - f) < options["tol"])
+                       or (np.abs(f) < options["tol"]))
 
         if options["full_results"]:
             problem.stats["total_fun"].append(f)
-            problem.stats["total_crit"].append(min(np.abs(fold-f), np.abs(fold)))
-        
+            problem.stats["total_crit"].append(min(np.abs(fold-f),
+                                                   np.abs(fold)))
+
         # Print and loop back
         nbiter = nbiter + 1
-        
+
         if options["verbose"] > 0:
             print(" {0:>4} {1:>16.4e} {2:>16.4e}".format(nbiter, f, fold-f))
-                
+
     # ===================================================== end while
 
     if nbiter >= options["maxiter"]:
@@ -1943,11 +1975,12 @@ def gpi_solver(problem, options):
     else:
         exitcode = 0
         msg = _status_message["success"]
-       
+
     problem.stats["nbiter"] = nbiter
 
-    # Sometimes, X assumes some imaginary garbage values.    
+    # Sometimes, X assumes some imaginary garbage values.
     return X.real, f, exitcode, msg
+
 
 def compare_solvers(problem, *args, plot=False):
     """
@@ -1960,7 +1993,7 @@ def compare_solvers(problem, *args, plot=False):
           The problem for which we want to compare solvers.
        - ``args``: ``ProcrustesSolver`` objects
           The solvers we want to compare.
-       - ``plot``: ``bool`` 
+       - ``plot``: ``bool``
           If ``True``, plots the evolution of the residual at each iteration,
           except for the GKBSolver (where the nature of the iterations does not
           allow this kind of comparison)
@@ -1973,7 +2006,7 @@ def compare_solvers(problem, *args, plot=False):
 
        To compare the 4 solvers on the same problem, you can do:
 
-       >>> myproblem = skp.ProcrustesProblem((1000,1000,10,10), problemnumber=1)
+       >>> myproblem = skp.ProcrustesProblem((100,100,10,10), problemnumber=1)
        >>> solver1 = skp.EBSolver(full_results=True)
        >>> solver2 = skp.SPGSolver(full_results=True)
        >>> solver3 = skp.GPISolver(full_results=True)
@@ -1983,22 +2016,23 @@ def compare_solvers(problem, *args, plot=False):
                                          plot=True)
 
     .. note::
-    
-       GKBSolver cannot be compared with the other solvers because of the 
-       nature of its iterations. In the future, it should be possible to add 
+
+       GKBSolver cannot be compared with the other solvers because of the
+       nature of its iterations. In the future, it should be possible to add
        a tool to compare it to other algorithms.
     """
     import time
-    
+
     # TODO turn off verbose for comparison
-    
+
     results = []
     solvetime = []
     if plot:
         fig, ax = plt.subplots()
 
-    cputime = "Solver          CPU time\n========================================\n"
-        
+    cputime = ("Solver          CPU time\n"
+               + "========================================\n")
+
     for solver in args:
         t1 = time.clock()
         solverresult = solver.solve(problem)
@@ -2020,13 +2054,13 @@ def compare_solvers(problem, *args, plot=False):
         y = np.asarray(results[-1].total_fun)
         if plot and solver.solvername != "gkb":
             plt.semilogy(y, label=plotlabel)
-            legend = ax.legend()
+            plt.legend = ax.legend()
             plt.xlabel("Iterations")
             plt.ylabel("Objective")
-            plt.title("Problem "+str(problem.problemnumber))        
+            plt.title("Problem "+str(problem.problemnumber))
 
     print(cputime)
     if plot:
         plt.show()
-        
+
     return results
