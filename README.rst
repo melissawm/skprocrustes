@@ -1,10 +1,11 @@
 =================
-scikit-procrustes .. image:: https://travis-ci.org/melissawm/skprocrustes.svg?branch=master :target: https://travis-ci.org/melissawm/skprocrustes
+scikit-procrustes 
 =================
 
 This is a scikit for the Weighted Orthogonal Procrustes Problem. 
 
-
+ .. image:: https://travis-ci.org/melissawm/skprocrustes.svg?branch=master
+    :target: https://travis-ci.org/melissawm/skprocrustes
 
 Installation from sources
 =========================
