@@ -100,7 +100,7 @@ class ProcrustesProblem:
        >>> problem.Xsol
     """
 
-    def __init__(self, sizes, problemnumber=None, matrices=[]):
+    def __init__(self, sizes, problemnumber=None, matrices=None):
         if sizes[0] != sizes[1] or sizes[2] != sizes[3]:
             raise Exception("Currently only square problems are supported.")
         elif sizes[0] % sizes[2] != 0:
@@ -188,7 +188,7 @@ class ProcrustesProblem:
         # A(m,n), B(m,q), C(p,q)
         m, n, p, q = self.sizes
 
-        if not matrices:
+        if matrices==None:
 
             # Predefined examples for testing and benchmarking.
             # Reference:
