@@ -20,6 +20,7 @@ __all__ = ['ProcrustesProblem', 'OptimizeResult', 'ProcrustesSolver',
            'spectral_setup', 'spectral_solver', 'eb_solver', 'gpi_solver',
            'blockbidiag', 'bidiaggs', 'optimality', 'compare_solvers']
 
+__version__ = "0.1"
 # If you want to use Numpy's testing framerwork, use the following.
 # Tests go under directory tests/, benchmarks under directory benchmarks/
 
