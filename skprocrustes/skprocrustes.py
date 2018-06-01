@@ -1499,7 +1499,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         if options["verbose"] > 2:
             print("\n          OUTER ITERATION {}:\n"
                   .format(outer+1))
-            print("             f = {}".format(f))
+            print("             f = {}".format(ftrial))
             print("             normg = {}".format(normg))
         elif options["verbose"] == 1:
             # outer f normg innerits
