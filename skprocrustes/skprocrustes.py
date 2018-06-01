@@ -190,7 +190,7 @@ class ProcrustesProblem:
         # A(m,n), B(m,q), C(p,q)
         m, n, p, q = self.sizes
 
-        if matrices==None:
+        if matrices is None:
 
             # Predefined examples for testing and benchmarking.
             # Reference:
@@ -1206,7 +1206,8 @@ def spectral_setup(problem, solvername, options):
 
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 Xk, problem.A,
-                                                                problem.B, "spg",
+                                                                problem.B,
+                                                                "spg",
                                                                 options)
         problem.stats["nbiter"] += nbiter
         R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
