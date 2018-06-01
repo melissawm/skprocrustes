@@ -37,7 +37,9 @@ import matplotlib.pyplot as plt
 
 # standard status messages of optimizers (based on scipy.optimize)
 _status_message = {'success': 'Optimization terminated successfully.',
+                   'innersuccess': 'Inner iteration successful.',
                    'infeasible': 'Infeasible point found.',
+                   'stalled': 'No further progress can be made.',
                    'smallpred': 'Small PRED',
                    'negativepred': 'Negative PRED',
                    'maxiter': 'Maximum number of iterations has been '
@@ -382,6 +384,14 @@ class OptimizeResult(dict):
     def __dir__(self):
         return list(self.keys())
 
+    def show(self):
+        print("=========")
+        print(" Summary:")
+        print("=========")
+        for k, v in self.items():
+            if k != "solution":
+                print(k, ": {}".format(v))
+
 
 class ProcrustesSolver:
     """
@@ -443,7 +453,7 @@ class SPGSolver(ProcrustesSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
-       - ``maxiter``: (*default*: ``2000``)
+       - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
           verbosity level. Current options:
@@ -521,7 +531,7 @@ class SPGSolver(ProcrustesSolver):
             raise Exception("gtol must be a float")
 
         if "maxiter" not in keys:
-            self.options["maxiter"] = 2000
+            self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
             raise Exception("maxiter must be an integer")
 
@@ -611,7 +621,7 @@ class GKBSolver(SPGSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
-       - ``maxiter``: (*default*: ``2000``)
+       - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
           verbosity level. Current options:
@@ -707,7 +717,7 @@ class EBSolver(ProcrustesSolver):
           comparison between solvers)
        - ``tol``: (*default*: ``1e-6``)
           tolerance for detecting convergence
-       - ``maxiter``: (*default*: ``2000``)
+       - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
           verbosity level. Current options:
@@ -819,7 +829,7 @@ class EBSolver(ProcrustesSolver):
             raise Exception("tol must be a float")
 
         if "maxiter" not in keys:
-            self.options["maxiter"] = 2000
+            self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
             raise Exception("maxiter must be an integer")
 
@@ -849,7 +859,7 @@ class GPISolver(ProcrustesSolver):
           comparison between solvers)
        - ``tol``: (*default*: ``1e-3``)
           tolerance for detecting convergence
-       - ``maxiter``: (*default*: ``2000``)
+       - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
           verbosity level. Current options:
@@ -951,7 +961,7 @@ class GPISolver(ProcrustesSolver):
             raise Exception("tol must be a float")
 
         if "maxiter" not in keys:
-            self.options["maxiter"] = 2000
+            self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
             raise Exception("maxiter must be an integer")
 
@@ -1006,19 +1016,20 @@ def spectral_setup(problem, solvername, options):
             # PERFORMANCE.
             X = np.copy(VT[0:p, 0:n].T)
             # Aorig = problem.A.copy()
-            A = np.zeros((m, n))
+            Ak = np.zeros((m, n))
             for i in range(0, min(m, n)):
-                A[i, i] = S[i]
+                Ak[i, i] = S[i]
             Bk = np.dot(U.T, problem.B)
         else:
             X = np.zeros((n, p))
             Bk = np.copy(problem.B)
+            Ak = np.copy(problem.A)
 
         if verbose > 0:
             print("                SPG Solver")
 
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
-                                                                X, problem.A,
+                                                                X, Ak,
                                                                 Bk, solvername,
                                                                 options)
 
@@ -1117,8 +1128,8 @@ def spectral_setup(problem, solvername, options):
             VT = np.zeros((n, n))
             VT[0:smalldim, 0:n] = np.copy(V[0:n, 0:smalldim].T)
 
-            # temp is old normdummyg
-            exitcode, f, X[0:smalldim, 0:p], temp, outer, msg \
+            # normgradlower
+            exitcode, f, X[0:smalldim, 0:p], normgradlower, outer, msg \
                 = spectral_solver(problem, largedim, smalldim,
                                   X[0:smalldim, 0:p],
                                   T[0:largedim, 0:smalldim],
@@ -1136,7 +1147,6 @@ def spectral_setup(problem, solvername, options):
             residuals.append(residual)
 
             grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-
             gradproj = np.dot(Xk, np.dot(Xk.T, grad) + np.dot(grad.T, Xk))
             - 2.0*grad
             normgrad = sp.norm(gradproj, 'fro')
@@ -1159,13 +1169,15 @@ def spectral_setup(problem, solvername, options):
                 # Z(p)(k) is the last pxp block of Yk.
                 Zpk = np.copy(Yk[(k-1)*p:smalldim, 0:p])
                 Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
-                Vk = V[0:n, 0:smalldim]
 
-                prod1 = np.eye(n, n) - np.dot(Vk,
-                                              np.dot(Yk, np.dot(Yk.T, Vk.T)))
                 prod2 = np.dot(V[0:n, smalldim:smalldim+p],
                                np.dot(Akp1, np.dot(Bkp1, Zpk)))
-                res2 = np.dot(prod1, prod2)
+
+                # prod = 0
+                # prod = np.dot(np.dot(Vk,
+                #                      np.dot(Yk, np.dot(Yk.T, Vk.T))), prod2)
+
+                res2 = prod2
                 resBlobop2 = sp.norm(res2, "fro")
 
                 newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
@@ -1186,8 +1198,27 @@ def spectral_setup(problem, solvername, options):
 
     if normgrad <= options["gtol"]:
         msg = _status_message['success']
+    else:
+        msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
         if options["verbose"] > 0:
             print(msg)
+            print("                Using SPG Solver:")
+
+        exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
+                                                                Xk, problem.A,
+                                                                problem.B, "spg",
+                                                                options)
+        problem.stats["nbiter"] += nbiter
+        R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
+        residual = sp.norm(R, 'fro')**2
+        print("residual: {}".format(residual))
+        grad, normg = optimality(problem.A, problem.C, X, R)
+        print("normg: {}".format(normg))
+        if normg < options["gtol"]:
+            msg = _status_message['success']
+
+    if options["verbose"] > 0:
+        print(msg)
 
     return Xk, f, normgrad, exitcode, msg
 
@@ -1336,6 +1367,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
     # If flag_while, then continue cycling.
     flag_while = True
+    flag_inner = True
     ftrial = 0.0
     Xold = X.copy()
 
@@ -1362,10 +1394,12 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
             print("             sigma = rho = {}\n".format(sigma))
         nbinnerit = 0
 
+        W = np.zeros(X.shape)
+
         # Inner iteration
         # =============================================================
 
-        while flag_while and trratio < beta1:
+        while flag_inner and trratio < beta1:
 
             if options["verbose"] > 2:
                 print("\n             INNER ITERATION {}:\n".format(nbinnerit))
@@ -1441,13 +1475,14 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
                 print("             trratio = {}\n".format(trratio))
 
             if trratio > beta1:
+                flag_inner = False
                 if options["verbose"] > 2:
                     print("\n             INNER ITERATION FINISHED: success\n")
                     print("             trratio = {}\n".format(trratio))
                     print("             beta1 = {}\n".format(beta1))
 
             # Below is equation (15) from (Francisco, Bazan, 2012)
-            if flag_while:
+            if flag_inner and flag_while:
                 rho = chi*rho
                 if rho > Lu:
                     if options["verbose"] > 1:
@@ -1507,6 +1542,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
                   format(outer+1, f, cost[outer+1], normg, nbinnerit))
 
         outer = outer+1
+        flag_inner = True
 
     # end while
 
@@ -1516,7 +1552,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         print('Warning: ' + msg)
     else:
         exitcode = 0
-        msg = ""
+        msg = _status_message["innersuccess"]
 
     # Since we already updated nbiter, f is now cost[outer] instead of
     # cost[outer+1]
