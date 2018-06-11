@@ -1362,6 +1362,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     flag_inner = True
     ftrial = 0.0
     Xold = X.copy()
+    blobopresidual = 0.0
 
     while (normg > options["gtol"]
            and flag_while
@@ -1537,6 +1538,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             
             # Z(p)(k) is the last pxp block of X.
             Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
+            # blobopprod is an input parameter
             res2 = np.dot(blobopprod, Zpk)
             resBlobop2 = sp.norm(res2, "fro")
 
@@ -1544,6 +1546,18 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             if options["verbose"] > 1:
                 print("       New BLOBOP Residual = {}\n"
                       .format(newResidual))
+                print("       Old BLOBOP Residual = {}\n"
+                      .format(blobopresidual))
+
+            if options["bloboptest"]:
+                if np.abs(newResidual - blobopresidual) < 1e-3:
+                    flag_while = False
+                    print(" Leaving because of blobop.")
+                else:
+                    blobopresidual = newResidual
+            else:
+                blobopresidual = newResidual
+                
             # ##################################### BLOBOP
 
         if options["verbose"] > 1:
