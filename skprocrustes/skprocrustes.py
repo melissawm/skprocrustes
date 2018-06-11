@@ -1047,11 +1047,6 @@ def spectral_setup(problem, solvername, options):
         R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
         residual = sp.norm(R, 'fro')**2
 
-        print("Real residual: {}".format(sp.norm(np.dot(np.eye(n,n)-np.dot(X, X.T), np.dot(Ak.T, np.dot(Ak,X)-Bk)))))
-        print("I-XXT = {}".format(sp.norm(np.dot(X, X.T)-np.eye(X.shape[0], X.shape[0]))))
-        print("AX-B = {}".format(sp.norm(np.dot(Ak, X)-Bk)))
-        print("At(AX-B) = {}".format(sp.norm(np.dot(Ak.T, np.dot(Ak, X)-Bk))))
-
     elif solvername == "gkb":
 
         problem.stats["blocksteps"] = 0
@@ -1079,20 +1074,19 @@ def spectral_setup(problem, solvername, options):
                 inner = True
                 # largedim and smalldim are the current dimensions of our problem:
                 # A(largedim, smalldim), B(largedim, q), X(smalldim, p)
-                largedim = q*(k+1)
-                # if largedim < m:
+
                 #    Incomplete bidiagonalization:
                 #    T(q*(k+1),q*k), U(m,q*(k+1)), V(n,q*k)
+                largedim = q*(k+1)
                 smalldim = q*k
-                # else:
-                #    smalldim = m # = n
 
                 # B1 is a p by p block used in the computation of the new
                 # BLOBOP residual
                 U, V, T, B1, reorth = blockbidiag(problem, U, V, T,
                                                   nsteps, partial)
 
-                # Akp1 is ok
+                # Akp1 is the last block of T used in the computation
+                # of the BLOBOP residual. (Only for k < maxsteps)
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
 
                 if options["verbose"] > 2:
@@ -1101,8 +1095,9 @@ def spectral_setup(problem, solvername, options):
             else:
                 largedim = q*k
                 smalldim = q*k
-                # B1 is a p by p block used in the computation of the new
-                # BLOBOP residual
+                # Since k = maxsteps, we are not going to compute the
+                # blobop (lower) residual inside spectral_solver
+                inner = False
 
             if options["verbose"] > 0:
                 print(" ----> GKB Iteration {}: Tk is {}x{}"
@@ -1115,12 +1110,6 @@ def spectral_setup(problem, solvername, options):
                 #print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
                 #print("U = {}\n".format(U[0:m, 0:largedim]))
                 #print("V = {}\n".format(V[0:n, 0:smalldim]))
-                AV = np.dot(problem.A, V[0:n, 0:smalldim])
-                prod = np.dot(U[0:m, 0:largedim].T, AV)
-                print("T - UT*A*V = {}\n"
-                      .format(sp.norm(T[0:largedim, 0:smalldim] - prod)))
-
-            if options["verbose"] > 2:
                 AV = np.dot(problem.A, V[0:n, 0:smalldim])
                 prod = np.dot(U[0:m, 0:largedim].T, AV)
                 print("       MaxError = {}\n"
@@ -1139,16 +1128,13 @@ def spectral_setup(problem, solvername, options):
                 #X[0:q*(k-1), 0:p] = np.copy(Yk
                 #X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
 
-            #VT = np.zeros((n, n))
-            #VT[0:smalldim, 0:n] = np.copy(V[0:n, 0:smalldim].T)
-
             Tk = T[0:largedim, 0:smalldim]
             if k < maxsteps:
                 Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
                 # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
                 #                     np.dot(Akp1, Bkp1))
                 blobopprod = np.dot(Akp1, Bkp1)
-            # normgradlower
+                
             exitcode, f, Yk, normgradlower, outer, msg \
                 = spectral_solver(problem, largedim, smalldim,
                                   X[0:smalldim, 0:p], Tk,
@@ -1164,7 +1150,6 @@ def spectral_setup(problem, solvername, options):
             residual = sp.norm(R, 'fro')**2
             residuals.append(residual)
 
-            # grad, normgrad = optimality(problem.A, problem.C, Xk, R)
             # Test optimality of X
             grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
             gradproj = np.dot(Xk, np.dot(Xk.T, grad)+np.dot(grad.T, Xk)) - 2.0*grad
@@ -1177,38 +1162,9 @@ def spectral_setup(problem, solvername, options):
                       .format(residual))
 
             # ##################################### BLOBOP
-            if k <= maxsteps:
-                # calB = np.zeros((smalldim, p))
-                # calB[0:p, 0:p] = B1
-                # print(Yk.shape)
-                # print(Tk.shape)
-                # print(calB.shape)
-                # res1 = np.dot(np.eye(smalldim, smalldim)
-                #               - np.dot(Yk, Yk.T),
-                #               np.dot(Tk.T, np.dot(Tk, Yk) - calB))
-                # resBlobop1 = sp.norm(res1, 'fro')
-                # print("resBlobop1 = {}".format(resBlobop1))
-
-                # # Z(p)(k) is the last pxp block of Yk.
-                # Zpk = np.copy(Yk[smalldim-p:smalldim, 0:p])
-                # #Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
-
-                # #prod2 = np.dot(V[0:n, smalldim:smalldim+p],
-                # #               np.dot(Akp1, np.dot(Bkp1, Zpk)))
-                # # prod = 0
-                # # prod = np.dot(np.dot(Vk, np.dot(Yk, np.dot(Yk.T, Vk.T))),
-                # #                                prod2)
-                # prod2 = np.dot(Akp1, np.dot(Bkp1, Zpk))
-                # res2 = prod2
-                # resBlobop2 = sp.norm(res2, "fro")
-                # print("resBlobop2 = {}".format(resBlobop2))
-                
-                # newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
-                newResidual = 0.0
-                # if options["verbose"] > 1:
-                print("       New BLOBOP Residual = {}\n"
-                      .format(newResidual))
-                realresidual = np.dot(np.eye(n,n)-np.dot(Xk, Xk.T), np.dot(problem.A.T, np.dot(problem.A, Xk)-problem.B))
+            if k < maxsteps:
+                realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
+                                      np.dot(problem.A.T, np.dot(problem.A, Xk)-problem.B))
                 print(" Real residual = {}".format(sp.norm(realresidual, "fro")))
             # ##################################### BLOBOP
 
@@ -1231,7 +1187,6 @@ def spectral_setup(problem, solvername, options):
             print("                Using SPG Solver:")
 
         inner = False
-        print("Xk = {}".format(Xk))
         
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 Xk, problem.A,
@@ -1239,18 +1194,15 @@ def spectral_setup(problem, solvername, options):
                                                                 "spg",
                                                                 options,
                                                                 inner)
-        print("X = {}".format(X))
         problem.stats["nbiter"] += nbiter
         R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
         residual = sp.norm(R, 'fro')**2
-        print("residual: {}".format(residual))
 
         # Test optimality of X
         grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
         gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
         normg = sp.norm(gradproj, 'fro')
 
-        print("normg: {}".format(normg))
         if normg < options["gtol"]:
             msg = _status_message['success']
 
@@ -1577,34 +1529,21 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
         # ##################################### BLOBOP
         if inner:
-            calB = np.zeros((smalldim, p))
+            calB = np.zeros((largedim, p))
             calB[0:p, 0:p] = np.copy(B1)
-            #print(A.shape, A.ndim, A.size)
-            #print(X.shape, X.ndim, X.size)
-            #print(calB.shape, calB.ndim, calB.size)
-            res1 = np.dot(A, X)
-            print(res1.shape, res1.ndim, res1.size)
-            print(calB.shape, calB.ndim, calB.size)
-            print(calB)
-            #print(calB-res1)
+            res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
+                          np.dot(A.T, np.dot(A, X) - calB))
+            resBlobop1 = sp.norm(res1, 'fro')
             
-            #print("res1 = {}".format(res1))
+            # Z(p)(k) is the last pxp block of X.
+            Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
+            res2 = np.dot(blobopprod, Zpk)
+            resBlobop2 = sp.norm(res2, "fro")
 
-            #print(calB[0:smalldim, 0:p]-res1[0:smalldim, 0:p])
-            #res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
-            #              np.dot(A.T, np.dot(A, X) - calB))
-            # resBlobop1 = sp.norm(res1, 'fro')
-
-            # # Z(p)(k) is the last pxp block of X.
-            # Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
-            # res2 = np.dot(blobopprod, Zpk)
-            # resBlobop2 = sp.norm(res2, "fro")
-
-            # newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
-            # if options["verbose"] > 1:
-            #     print("       New BLOBOP Residual = {}\n"
-            #           .format(newResidual))
-            newResidual = 0.0
+            newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+            if options["verbose"] > 1:
+                print("       New BLOBOP Residual = {}\n"
+                      .format(newResidual))
             # ##################################### BLOBOP
 
         if options["verbose"] > 1:
