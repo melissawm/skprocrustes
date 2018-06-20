@@ -545,6 +545,11 @@ class SPGSolver(ProcrustesSolver):
         elif type(self.options["changevar"]) != bool:
             raise Exception("changevar must be True or False")
 
+        if "bloboptest" not in keys:
+            self.options["bloboptest"] = False
+        elif type(self.options["bloboptest"]) != bool:
+            raise Exception("bloboptest must be True or False")
+
     def solve(self, problem):
 
         """
@@ -1162,10 +1167,10 @@ def spectral_setup(problem, solvername, options):
                       .format(residual))
 
             # ##################################### BLOBOP
-            if k < maxsteps:
-                realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
-                                      np.dot(problem.A.T, np.dot(problem.A, Xk)-problem.B))
-                print(" Real residual = {}".format(sp.norm(realresidual, "fro")))
+            # if k < maxsteps:
+            #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
+            #                           np.dot(problem.A.T, np.dot(problem.A, Xk)-problem.B))
+            #     print(" Real residual = {}".format(sp.norm(realresidual, "fro")))
             # ##################################### BLOBOP
 
             k = k + 1
