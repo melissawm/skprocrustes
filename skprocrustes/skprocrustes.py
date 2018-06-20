@@ -1138,9 +1138,9 @@ def spectral_setup(problem, solvername, options):
 
             debug = False
             if debug:
-                #print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
-                #print("U = {}\n".format(U[0:m, 0:largedim]))
-                #print("V = {}\n".format(V[0:n, 0:smalldim]))
+                # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
+                # print("U = {}\n".format(U[0:m, 0:largedim]))
+                # print("V = {}\n".format(V[0:n, 0:smalldim]))
                 AV = np.dot(problem.A, V[0:n, 0:smalldim])
                 prod = np.dot(U[0:m, 0:largedim].T, AV)
                 print("       MaxError = {}\n"
@@ -1151,13 +1151,13 @@ def spectral_setup(problem, solvername, options):
 
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
 
-            #if k == 1:
+            # if k == 1:
             X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
-            #else:
-                # X[0:q*(k-1),0:p] = result from last run
-                #X = np.zeros((smalldim, p))
-                #X[0:q*(k-1), 0:p] = np.copy(Yk
-                #X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
+            # else:
+            #    X[0:q*(k-1),0:p] = result from last run
+            #    X = np.zeros((smalldim, p))
+            #    X[0:q*(k-1), 0:p] = np.copy(Yk
+            #    X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
 
             Tk = T[0:largedim, 0:smalldim]
             if k < maxsteps:
@@ -1165,7 +1165,7 @@ def spectral_setup(problem, solvername, options):
                 # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
                 #                     np.dot(Akp1, Bkp1))
                 blobopprod = np.dot(Akp1, Bkp1)
-                
+
             exitcode, f, Yk, normgradlower, outer, msg \
                 = spectral_solver(problem, largedim, smalldim,
                                   X[0:smalldim, 0:p], Tk,
@@ -1291,6 +1291,15 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
              Can take values in (0,1,2,3)
           - ``gtol``: ``float``
              Tolerance for convergence.
+          - ``bloboptest``: (*default*: ``False``)
+             boolean option to test the computation of a new residual at lower
+             GKB levels to decide if we are going to iterate at this level or
+             give up and add a new block to the bidiagonalization.
+          - ``polar``: (*default*: ``False``)
+             boolean option to decide if we are going to compute the
+             solution of the GKB subproblem via an SVD decomposition or
+             via iterative methods to compute the polar decomposition.
+
 
     Output:
 
@@ -1440,18 +1449,21 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
             W = np.copy(X - (1.0/(rho + sigma))*grad)
 
-            # If X is m-by-n with m > n, then svd(X,0) computes only the first
-            # n columns of U and S is (n,n)
+            if options["polar"]:
+                print("**** POLAR OPTION NOT YET IMPLEMENTED")
+            else:
+                # If X is m-by-n with m > n, then svd(X,0) computes only the first
+                # n columns of U and S is (n,n)
 
-            UW, SW, VWT = sp.svd(W, full_matrices=False)
-            # UW, SW, VWT = sp.svd(W)
+                UW, SW, VWT = sp.svd(W, full_matrices=False)
+                # UW, SW, VWT = sp.svd(W)
 
-            # W(smalldim,p)
-            # UW(smalldim,min(smalldim,p))
-            # VWT(min(smalldim,p),p)
+                # W(smalldim,p)
+                # UW(smalldim,min(smalldim,p))
+                # VWT(min(smalldim,p),p)
 
-            Xtrial = np.dot(UW, VWT)
-            problem.stats["svd"] = problem.stats["svd"] + 1
+                Xtrial = np.dot(UW, VWT)
+                problem.stats["svd"] = problem.stats["svd"] + 1
 
             # Computing constraint violation to see if the subproblem
             # solution has been satisfactorily solved
