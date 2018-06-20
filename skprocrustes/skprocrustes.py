@@ -510,6 +510,10 @@ class SPGSolver(ProcrustesSolver):
         # - changevar: boolean option to allow for a change of variables
         #              before starting the method. Currently disabled
         #              due to bad performance
+        # - bloboptest: boolean option to test the computation of a new
+        #               residual at lower GKB levels to decide if we are
+        #               going to iterate at this level or give up and add a
+        #               new block to the bidiagonalization.
 
         super()._setoptions()
         self.options = options
@@ -637,6 +641,10 @@ class GKBSolver(SPGSolver):
        - ``changevar``: (*default*: ``False``)
           boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
+       - ``bloboptest``: (*default*: ``False``)
+          boolean option to test the computation of a new residual at lower
+          GKB levels to decide if we are going to iterate at this level or
+          give up and add a new block to the bidiagonalization.
 
     Output:
 
