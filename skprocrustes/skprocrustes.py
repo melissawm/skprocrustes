@@ -514,6 +514,9 @@ class SPGSolver(ProcrustesSolver):
         #               residual at lower GKB levels to decide if we are
         #               going to iterate at this level or give up and add a
         #               new block to the bidiagonalization.
+        # - polar: boolean option to decide if we are going to compute the
+        #          solution of the GKB subproblem via an SVD decomposition or
+        #          via iterative methods to compute the polar decomposition.
 
         super()._setoptions()
         self.options = options
@@ -553,6 +556,11 @@ class SPGSolver(ProcrustesSolver):
             self.options["bloboptest"] = False
         elif type(self.options["bloboptest"]) != bool:
             raise Exception("bloboptest must be True or False")
+
+        if "polar" not in keys:
+            self.options["polar"] = False
+        elif type(self.options["polar"]) != bool:
+            raise Exception("polar must be True or False")
 
     def solve(self, problem):
 
@@ -645,6 +653,11 @@ class GKBSolver(SPGSolver):
           boolean option to test the computation of a new residual at lower
           GKB levels to decide if we are going to iterate at this level or
           give up and add a new block to the bidiagonalization.
+       - ``polar``: (*default*: ``False``)
+           boolean option to decide if we are going to compute the
+           solution of the GKB subproblem via an SVD decomposition or
+           via iterative methods to compute the polar decomposition.
+
 
     Output:
 
@@ -1019,8 +1032,6 @@ def spectral_setup(problem, solvername, options):
     # Decide whether we are going to solve by blocks or not.
 
     if solvername == "spg":
-        U, S, VT = sp.svd(problem.A)
-        problem.stats["svd"] = problem.stats["svd"]+1
 
         #
         # Computing starting point
@@ -1030,6 +1041,13 @@ def spectral_setup(problem, solvername, options):
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
+
+            if options["polar"]:
+                print("**** POLAR OPTION NOT YET IMPLEMENTED")
+            else:
+                U, S, VT = sp.svd(problem.A)
+                problem.stats["svd"] = problem.stats["svd"]+1
+
             X = np.copy(VT[0:p, 0:n].T)
             # Aorig = problem.A.copy()
             Ak = np.zeros((m, n))
