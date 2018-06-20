@@ -5,3 +5,5 @@ build
 dist
 scikit_procrustes.egg-info
 .flake8
+build.log
+.ipynb_checkpoints
