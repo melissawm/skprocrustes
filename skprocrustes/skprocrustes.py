@@ -464,6 +464,15 @@ class SPGSolver(ProcrustesSolver):
        - ``changevar``: (*default*: ``False``)
           boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
+       - ``bloboptest``: (*default*: ``False``)
+          boolean option to test the computation of a new residual at lower
+          GKB levels to decide if we are going to iterate at this level or
+          give up and add a new block to the bidiagonalization.
+       - ``polar``: (*default*: ``None``)
+          option to decide if we are going to compute the solution of the
+          GKB subproblem via an SVD decomposition or via iterative methods
+          to compute the polar decomposition.
+          Can take values ``ns`` or ``None``.
 
     Output:
 
@@ -514,9 +523,10 @@ class SPGSolver(ProcrustesSolver):
         #               residual at lower GKB levels to decide if we are
         #               going to iterate at this level or give up and add a
         #               new block to the bidiagonalization.
-        # - polar: boolean option to decide if we are going to compute the
-        #          solution of the GKB subproblem via an SVD decomposition or
-        #          via iterative methods to compute the polar decomposition.
+        # - polar: option to decide if we are going to compute the solution of
+        #          the GKB subproblem via an SVD decomposition or via iterative
+        #          methods to compute the polar decomposition.
+        #          Can take values ``ns`` or ``None``.
 
         super()._setoptions()
         self.options = options
@@ -558,9 +568,9 @@ class SPGSolver(ProcrustesSolver):
             raise Exception("bloboptest must be True or False")
 
         if "polar" not in keys:
-            self.options["polar"] = False
-        elif type(self.options["polar"]) != bool:
-            raise Exception("polar must be True or False")
+            self.options["polar"] = None
+        elif self.options["polar"] not in (None, "ns"):
+            raise Exception("polar must be ns or None")
 
     def solve(self, problem):
 
@@ -653,11 +663,11 @@ class GKBSolver(SPGSolver):
           boolean option to test the computation of a new residual at lower
           GKB levels to decide if we are going to iterate at this level or
           give up and add a new block to the bidiagonalization.
-       - ``polar``: (*default*: ``False``)
-           boolean option to decide if we are going to compute the
-           solution of the GKB subproblem via an SVD decomposition or
-           via iterative methods to compute the polar decomposition.
-
+       - ``polar``: (*default*: ``None``)
+          option to decide if we are going to compute the solution of the
+          GKB subproblem via an SVD decomposition or via iterative methods
+          to compute the polar decomposition.
+          Can take values ``ns`` or ``None``.
 
     Output:
 
@@ -1042,11 +1052,8 @@ def spectral_setup(problem, solvername, options):
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
 
-            if options["polar"]:
-                print("**** POLAR OPTION NOT YET IMPLEMENTED")
-            else:
-                U, S, VT = sp.svd(problem.A)
-                problem.stats["svd"] = problem.stats["svd"]+1
+            U, S, VT = sp.svd(problem.A)
+            problem.stats["svd"] = problem.stats["svd"]+1
 
             X = np.copy(VT[0:p, 0:n].T)
             # Aorig = problem.A.copy()
@@ -1295,10 +1302,11 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
              boolean option to test the computation of a new residual at lower
              GKB levels to decide if we are going to iterate at this level or
              give up and add a new block to the bidiagonalization.
-          - ``polar``: (*default*: ``False``)
-             boolean option to decide if we are going to compute the
-             solution of the GKB subproblem via an SVD decomposition or
-             via iterative methods to compute the polar decomposition.
+          - ``polar``: (*default*: ``None``)
+             option to decide if we are going to compute the solution of the
+             GKB subproblem via an SVD decomposition or via iterative methods
+             to compute the polar decomposition.
+             Can take values ``ns`` or ``None``.
 
 
     Output:
@@ -1449,8 +1457,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
             W = np.copy(X - (1.0/(rho + sigma))*grad)
 
-            if options["polar"]:
-                print("**** POLAR OPTION NOT YET IMPLEMENTED")
+            if options["polar"] == "ns":
+                Xtrial = polardecomp(W, options)
             else:
                 # If X is m-by-n with m > n, then svd(X,0) computes only the first
                 # n columns of U and S is (n,n)
@@ -1473,6 +1481,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             if constraintviolation >= 1.0e-5:
                 msg = _status_message['infeasible']
                 print('Warning: ' + msg)
+                print("constraint violation: {}".format(constraintviolation))
                 return
 
             # Rtrial = A*Xtrial*C - B
@@ -1879,6 +1888,41 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
 #     gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
 #     normg = sp.norm(gradproj, 'fro')
 #     return grad, normg
+
+def polardecomp(W, options):
+
+    if options["polar"] == "ns":
+        # This is the Newton-Schultz iteration
+        [U, H] = polar_newton_schultz(W, 1e-3)
+    else:
+        print("**** POLAR OPTION NOT YET IMPLEMENTED")
+
+    return U
+
+
+def polar_newton_schultz(A, tol_cgce):
+    m, n = A.shape
+    if m > n:
+        # sp.qr(BB, overwrite_a=True, mode='economic')
+        [Q, R] = sp.qr(A, mode='economic')
+        A = R.copy()
+    X = A.copy()
+    delta = 1
+    # main loop
+    while True:
+        Xold = X.copy()
+        X = 0.5*X*(3*np.eye(n, n) - np.dot(X.T, X))
+        deltaold = delta
+        delta = sp.norm(X-Xold, 'fro')/sp.norm(X, 'fro')
+        if sp.norm(X-Xold, 'fro') <= (tol_cgce)**(0.5) or (delta > deltaold/2):
+            break
+    U = X.copy()
+    H1 = np.dot(U.T, A)
+    H = 0.5*(H1+H1.T)
+    if m > n:
+        U = np.dot(Q, U)
+    return U, H
+
 
 def eb_solver(problem, options):
 

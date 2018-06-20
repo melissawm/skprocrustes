@@ -154,6 +154,12 @@ class TestSPGSolver(TestCase):
     def test_setoptions_changevar(self):
         assert_raises(Exception, skp.SPGSolver, changevar=1)
 
+    def test_setoptions_bloboptest(self):
+        assert_raises(Exception, skp.SPGSolver, bloboptest=1)
+
+    def test_setoptions_polar(self):
+        assert_raises(Exception, skp.SPGSolver, polar=1)
+
 
 # Testing functions inside GKBSolver class:
 class TestGKBSolver(TestCase):
@@ -182,6 +188,12 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_changevar(self):
         assert_raises(Exception, skp.GKBSolver, changevar=1)
+
+    def test_setoptions_bloboptest(self):
+        assert_raises(Exception, skp.GKBSolver, bloboptest=1)
+
+    def test_setoptions_polar(self):
+        assert_raises(Exception, skp.GKBSolver, polar=1)
 
 
 # Testing functions inside EBSolver class:
@@ -280,6 +292,18 @@ class TestSpectralSolver(TestCase):
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
     # TODO: test known solution for problem 3.
+
+    def test_spectral_solver_gkb_polar_None(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, polar=None)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_gkb_polar_ns(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, polar="ns")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
 
 class TestBlockBidiag(TestCase):
