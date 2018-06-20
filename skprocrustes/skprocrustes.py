@@ -1003,8 +1003,6 @@ def spectral_setup(problem, solvername, options):
     # Decide whether we are going to solve by blocks or not.
 
     if solvername == "spg":
-        U, S, VT = sp.svd(problem.A)
-        problem.stats["svd"] = problem.stats["svd"]+1
 
         #
         # Computing starting point
@@ -1014,6 +1012,8 @@ def spectral_setup(problem, solvername, options):
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
+            U, S, VT = sp.svd(problem.A)
+            problem.stats["svd"] = problem.stats["svd"]+1
             X = np.copy(VT[0:p, 0:n].T)
             # Aorig = problem.A.copy()
             Ak = np.zeros((m, n))
