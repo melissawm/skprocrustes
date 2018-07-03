@@ -268,6 +268,10 @@ class TestSpectralSolver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
+#    def test_spectral_solver_spg_constraint_violation(self):
+#    não sei como fazer
+        
+
     # gkb solver
     def test_spectral_solver_known_solution_gkb_small(self):
         A = np.eye(10, 10)

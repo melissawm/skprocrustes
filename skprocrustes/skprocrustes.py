@@ -1480,9 +1480,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
             if constraintviolation >= 1.0e-5:
                 msg = _status_message['infeasible']
-                print('Warning: ' + msg)
-                print("constraint violation: {}".format(constraintviolation))
-                return
+                raise Exception("Warning: constraint violation = {}".format(constraintviolation))
+            #   return -1, f, X, normg, outer, msg
 
             # Rtrial = A*Xtrial*C - B
             Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
@@ -1882,18 +1881,11 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
 #     print("\n        A.T*UU(i+1)-VV(i)*T(i).T-V(i+1)*A(i+1)*E(i+1).T = {}\n"
 #           .format(errorRecurrence3))
 
-# def optimality(A, C, X, R):
-#     # Test optimality of X
-#     grad = 2.0*np.dot(A.T, np.dot(R, C.T))
-#     gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
-#     normg = sp.norm(gradproj, 'fro')
-#     return grad, normg
-
 def polardecomp(W, options):
 
     if options["polar"] == "ns":
         # This is the Newton-Schultz iteration
-        [U, H] = polar_newton_schultz(W, 1e-3)
+        [U, H] = polar_newton_schultz(W, 1e-5)
     else:
         print("**** POLAR OPTION NOT YET IMPLEMENTED")
 
@@ -1903,25 +1895,31 @@ def polardecomp(W, options):
 def polar_newton_schultz(A, tol_cgce):
     m, n = A.shape
     if m > n:
-        # sp.qr(BB, overwrite_a=True, mode='economic')
         [Q, R] = sp.qr(A, mode='economic')
         A = R.copy()
-    X = A.copy()
-    delta = 1
+    elif m < n:
+        raise("Error: m must be greater or equal to n")
+
+    X = A/sp.norm(A, 2)
+    k = 0
+    # deltaold = 10.
+    # delta = 1.
+    normdif = 1.0
     # main loop
-    while True:
-        Xold = X.copy()
-        X = 0.5*X*(3*np.eye(n, n) - np.dot(X.T, X))
-        deltaold = delta
-        delta = sp.norm(X-Xold, 'fro')/sp.norm(X, 'fro')
-        if sp.norm(X-Xold, 'fro') <= (tol_cgce)**(0.5) or (delta > deltaold/2):
-            break
-    U = X.copy()
-    H1 = np.dot(U.T, A)
+    while normdif > tol_cgce:  # and delta <= deltaold/2.0
+        Xnew = 1.5*X - 0.5*np.dot(X, np.dot(X.T, X))
+        normdif = sp.norm(Xnew - X, 'fro')
+        # deltaold = delta
+        # delta = sp.norm(Xnew-X, 'fro')/sp.norm(Xnew, 'fro')
+        X = Xnew.copy()
+        k = k + 1
+
+    # U = X.copy()
+    H1 = np.dot(X.T, A)
     H = 0.5*(H1+H1.T)
     if m > n:
-        U = np.dot(Q, U)
-    return U, H
+        X = np.dot(Q, X)
+    return X, H
 
 
 def eb_solver(problem, options):
