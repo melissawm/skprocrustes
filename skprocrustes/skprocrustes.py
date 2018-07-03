@@ -1603,7 +1603,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             if options["bloboptest"]:
                 if np.abs(newResidual - blobopresidual) < 1e-3:
                     flag_while = False
-                    print(" Leaving because of blobop.")
+                    if options["verbose"] > 1:
+                        print(" Leaving because of blobop.")
                 else:
                     blobopresidual = newResidual
             else:
