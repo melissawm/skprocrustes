@@ -1110,7 +1110,8 @@ def spectral_setup(problem, solvername, options):
             if k < maxsteps:
 
                 inner = True
-                # largedim and smalldim are the current dimensions of our problem:
+                # largedim and smalldim are the current dimensions of
+                # our problem:
                 # A(largedim, smalldim), B(largedim, q), X(smalldim, p)
 
                 #    Incomplete bidiagonalization:
@@ -1190,7 +1191,8 @@ def spectral_setup(problem, solvername, options):
 
             # Test optimality of X
             grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-            gradproj = np.dot(Xk, np.dot(Xk.T, grad)+np.dot(grad.T, Xk)) - 2.0*grad
+            gradproj = np.dot(Xk, np.dot(Xk.T, grad)+np.dot(grad.T, Xk))
+            - 2.0*grad
             normgrad = sp.norm(gradproj, 'fro')
 
             if options["verbose"] > 1:
@@ -1202,8 +1204,10 @@ def spectral_setup(problem, solvername, options):
             # ##################################### BLOBOP
             # if k < maxsteps:
             #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
-            #                           np.dot(problem.A.T, np.dot(problem.A, Xk)-problem.B))
-            #     print(" Real residual = {}".format(sp.norm(realresidual, "fro")))
+            #                           np.dot(problem.A.T,
+            #                                 np.dot(problem.A, Xk)-problem.B))
+            #     print(" Real residual = {}"
+            #           .format(sp.norm(realresidual, "fro")))
             # ##################################### BLOBOP
 
             k = k + 1
@@ -1225,7 +1229,7 @@ def spectral_setup(problem, solvername, options):
             print("                Using SPG Solver:")
 
         inner = False
-        
+
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 Xk, problem.A,
                                                                 problem.B,
@@ -1460,8 +1464,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             if options["polar"] == "ns":
                 Xtrial = polardecomp(W, options)
             else:
-                # If X is m-by-n with m > n, then svd(X,0) computes only the first
-                # n columns of U and S is (n,n)
+                # If X is m-by-n with m > n, then svd(X,0) computes only the
+                # first n columns of U and S is (n,n)
 
                 UW, SW, VWT = sp.svd(W, full_matrices=False)
                 # UW, SW, VWT = sp.svd(W)
@@ -1480,7 +1484,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
             if constraintviolation >= 1.0e-5:
                 msg = _status_message['infeasible']
-                raise Exception("Warning: constraint violation = {}".format(constraintviolation))
+                raise Exception("Warning: constraint violation = {}"
+                                .format(constraintviolation))
             #   return -1, f, X, normg, outer, msg
 
             # Rtrial = A*Xtrial*C - B
@@ -1503,14 +1508,14 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                 msg = _status_message['smallpred']
                 print('Warning: ' + msg)
                 trratio = 0.0
-                flag_while = False
+                # flag_while = False
             else:
                 trratio = ared/pred
 
             if pred < 0:
                 msg = _status_message['negativepred']
                 print('Warning: ' + msg)
-                flag_while = False
+                # flag_while = False
                 # trratio = 0.0
 
             if options["verbose"] > 2:
@@ -1586,7 +1591,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
                           np.dot(A.T, np.dot(A, X) - calB))
             resBlobop1 = sp.norm(res1, 'fro')
-            
+
             # Z(p)(k) is the last pxp block of X.
             Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
             # blobopprod is an input parameter
@@ -1601,7 +1606,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                       .format(blobopresidual))
 
             if options["bloboptest"]:
-                if np.abs(newResidual - blobopresidual) < 1e-3:
+                # print(np.abs(newResidual - blobopresidual))
+                # print(np.abs(newResidual - blobopresidual)/np.abs(newResidual))
+                if np.abs(newResidual - blobopresidual)/np.abs(newResidual) < 1e-1:
                     flag_while = False
                     if options["verbose"] > 1:
                         print(" Leaving because of blobop.")
