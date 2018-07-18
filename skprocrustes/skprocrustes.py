@@ -1047,7 +1047,7 @@ def spectral_setup(problem, solvername, options):
         # Computing starting point
         #
         if options["changevar"]:
-            # Change of variables: This is done to improve performance.
+            # Change of variables: This is done to try to improve performance.
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
@@ -1055,12 +1055,17 @@ def spectral_setup(problem, solvername, options):
             U, S, VT = sp.svd(problem.A)
             problem.stats["svd"] = problem.stats["svd"]+1
 
-            X = np.copy(VT[0:p, 0:n].T)
-            # Aorig = problem.A.copy()
-            Ak = np.zeros((m, n))
-            for i in range(0, min(m, n)):
-                Ak[i, i] = S[i]
-            Bk = np.dot(U.T, problem.B)
+            # X = np.copy(VT[0:p, 0:n].T)
+            ## Aorig = problem.A.copy()
+            # Ak = np.zeros((m, n))
+            # for i in range(0, min(m, n)):
+            #     Ak[i, i] = S[i]
+            # Bk = np.dot(U.T, problem.B)
+            
+            mu = np.max(S)-np.min(S)
+            X = np.zeros((n, p))
+            Bk = np.copy(problem.B)/mu
+            Ak = np.copy(problem.A)/mu
         else:
             X = np.zeros((n, p))
             Bk = np.copy(problem.B)
@@ -1539,6 +1544,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                               " parameter = {} to ensure sufficient decrease "
                               " (inner {} and outer = {})\n"
                               .format(Lu, nbinnerit, outer))
+                        options["verbose"] = 3
                     sigma = Lu
 
                 if options["verbose"] > 2:
@@ -1893,7 +1899,7 @@ def polardecomp(W, options):
 
     if options["polar"] == "ns":
         # This is the Newton-Schultz iteration
-        [U, H] = polar_newton_schultz(W, 1e-5)
+        [U, H] = polar_newton_schultz(W, 1e-8)
     else:
         print("**** POLAR OPTION NOT YET IMPLEMENTED")
 
