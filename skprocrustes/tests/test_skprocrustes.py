@@ -160,6 +160,9 @@ class TestSPGSolver(TestCase):
     def test_setoptions_polar(self):
         assert_raises(Exception, skp.SPGSolver, polar=1)
 
+    def test_setoptions_precond(self):
+        assert_raises(Exception, skp.SPGSolver, precond=1)
+
 
 # Testing functions inside GKBSolver class:
 class TestGKBSolver(TestCase):
@@ -194,6 +197,9 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_polar(self):
         assert_raises(Exception, skp.GKBSolver, polar=1)
+
+    def test_setoptions_precond(self):
+        assert_raises(Exception, skp.SPGSolver, precond=1)
 
 
 # Testing functions inside EBSolver class:
@@ -452,5 +458,19 @@ class TestGPI_Solver(TestCase):
 
     # GPISolver does not solve problem 3
 
+
+class TestComputeResidual(TestCase):
+
+    def test_compute_residual_no_precond(self):
+        A = np.eye(10, 10)
+        C = np.eye(2, 2)
+        X = np.ones((10, 2))
+        B = np.dot(A, np.dot(X, C))
+        precond = None
+        R, residual = skp.compute_residual(A, B, C, X, precond)
+        assert_allclose(residual, sp.norm(np.dot(A, np.dot(X, C))-B, 'fro')**2)
+        assert_allclose(R, np.dot(A, np.dot(X, C))-B)
+
+    
 if __name__ == "__main__":
     run_module_suite()

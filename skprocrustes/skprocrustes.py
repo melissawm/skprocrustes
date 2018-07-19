@@ -313,7 +313,7 @@ class ProcrustesProblem:
                 else:
                     self.Xsol = matrices[3]
 
-
+    
 class OptimizeResult(dict):
 
     """ Represents the optimization result.
@@ -426,6 +426,12 @@ class ProcrustesSolver:
         result = OptimizeResult(output)
         return result
 
+    # def cost(self, *args, **kwargs):
+    #     """
+    #     Compute the value of the cost function in a given point.
+    #     """
+    #     pass
+
 
 class SPGSolver(ProcrustesSolver):
     """
@@ -473,6 +479,9 @@ class SPGSolver(ProcrustesSolver):
           GKB subproblem via an SVD decomposition or via iterative methods
           to compute the polar decomposition.
           Can take values ``ns`` or ``None``.
+       - ``precond``: (*default*: ``None``)
+          option to decide if we are going to use preconditioners or not.
+          Can take values ``stupid`` or ``None``.
 
     Output:
 
@@ -527,6 +536,9 @@ class SPGSolver(ProcrustesSolver):
         #          the GKB subproblem via an SVD decomposition or via iterative
         #          methods to compute the polar decomposition.
         #          Can take values ``ns`` or ``None``.
+        # - ``precond``: (*default*: ``None``)
+        #                option to decide if we are going to use preconditioners
+        #                or not. Can take values ``stupid`` or ``None``.
 
         super()._setoptions()
         self.options = options
@@ -571,6 +583,12 @@ class SPGSolver(ProcrustesSolver):
             self.options["polar"] = None
         elif self.options["polar"] not in (None, "ns"):
             raise Exception("polar must be ns or None")
+
+        if "precond" not in keys:
+            self.options["precond"] = None
+        elif self.options["precond"] not in (None, "stupid"):
+            raise Exception("precond must be stupid or None")
+        
 
     def solve(self, problem):
 
@@ -1087,8 +1105,11 @@ def spectral_setup(problem, solvername, options):
         else:
             Xk = np.copy(X)
 
-        R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
-        residual = sp.norm(R, 'fro')**2
+        # R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
+        # residual = sp.norm(R, 'fro')**2
+
+        R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                       Xk, options["precond"])
 
     elif solvername == "gkb":
 
@@ -1190,8 +1211,11 @@ def spectral_setup(problem, solvername, options):
 
             Xk = np.dot(V[0:n, 0:smalldim], Yk)
 
-            R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
-            residual = sp.norm(R, 'fro')**2
+            # R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
+            # residual = sp.norm(R, 'fro')**2
+
+            R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                           Xk, options["precond"])
             residuals.append(residual)
 
             # Test optimality of X
@@ -1242,8 +1266,10 @@ def spectral_setup(problem, solvername, options):
                                                                 options,
                                                                 inner)
         problem.stats["nbiter"] += nbiter
-        R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
-        residual = sp.norm(R, 'fro')**2
+
+        # R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
+        # residual = sp.norm(R, 'fro')**2
+        R, residual = compute_residual(problem.A, problem.B, problem.C, X, options["precond"])
 
         # Test optimality of X
         grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
@@ -1379,9 +1405,12 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
     # R is the residual, norm(R,fro) is the cost.
     # R = A*X*C-B
-    R = np.dot(A, np.dot(X, problem.C)) - B
 
-    cost.append(sp.norm(R, 'fro')**2)
+    # R = np.dot(A, np.dot(X, problem.C)) - B
+    # cost.append(sp.norm(R, 'fro')**2)
+
+    R, residual = compute_residual(A, B, problem.C, X, options["precond"])
+    cost.append(residual)
 
     # problem.stats["fev"] = problem.stats["fev"] + 1
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
@@ -1493,11 +1522,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                                 .format(constraintviolation))
             #   return -1, f, X, normg, outer, msg
 
-            # Rtrial = A*Xtrial*C - B
-            Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
-
-            # ftrial = norm(Rtrial, fro)**2
-            ftrial = sp.norm(Rtrial, 'fro')**2
+            # Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
+            # ftrial = sp.norm(Rtrial, 'fro')**2
+            Rtrial, ftrial = compute_residual(A, B, problem.C, Xtrial, options["precond"])
 
             # problem.stats["fev"] = problem.stats["fev"]+1
             problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
@@ -2231,3 +2258,15 @@ def compare_solvers(problem, *args, plot=False):
         plt.show()
 
     return results
+
+def compute_residual(A, B, C, X, precond):
+
+    """
+    This method computes the residual of the current problem
+    according to our choice of method.
+    """
+        
+    R = np.dot(A, np.dot(X, C)) - B
+    residual = sp.norm(R, 'fro')**2
+
+    return R, residual
