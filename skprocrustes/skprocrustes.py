@@ -459,6 +459,9 @@ class SPGSolver(ProcrustesSolver):
           tolerance for detecting convergence on the gradient
        -  ``eta``: (*default*: ``0.2``)
           parameter for the nonmonotone cost computation 
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -520,6 +523,9 @@ class SPGSolver(ProcrustesSolver):
         #
         # - eta: parameter for the nonmonotone cost computation
         #
+        # - etavar: decide if we are going to vary the parameter eta
+        #           for the nonmonotone cost computation
+        #
         # - maxiter: maximum number of iterations allowed
         #
         # - verbose: verbosity level
@@ -567,7 +573,12 @@ class SPGSolver(ProcrustesSolver):
             self.options["eta"] = 0.2
         elif type(self.options["eta"]) != float:
             raise Exception("eta must be a float")
-        
+
+        if "etavar" not in keys:
+            self.options["etavar"] = False
+        elif type(self.options["etavar"]) != bool:
+            raise Exception("etavar must be a boolean")
+            
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
@@ -689,6 +700,11 @@ class GKBSolver(SPGSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
+       -  ``eta``: (*default*: ``0.2``)
+          parameter for the nonmonotone cost computation 
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -942,7 +958,7 @@ class EBSolver(ProcrustesSolver):
 
         if "filename" not in keys:
             self.options["filename"] = None
-        elif self.options["filename"] != str:
+        elif type(self.options["filename"]) != str:
             raise Exception("filename must be string")
 
     def open_file(self):
@@ -1101,7 +1117,7 @@ class GPISolver(ProcrustesSolver):
 
         if "filename" not in keys:
             self.options["filename"] = None
-        elif self.options["filename"] != str:
+        elif type(self.options["filename"]) != str:
             raise Exception("filename must be string")
 
     def open_file(self):
@@ -1421,6 +1437,11 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
        be reported).
     - ``options``: ``dict``
        Solver options. Keys available are:
+          -  ``eta``: ``float``
+             parameter for the nonmonotone cost computation 
+          - ``etavar``: ``bool``
+             decide if we are going to vary the parameter eta
+             for the nonmonotone cost computation
           - ``maxiter``: ``int``
              Maximum number of iterations allowed
           - ``strategy``: ``str``
@@ -1511,7 +1532,10 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
     if options["strategy"] == "newfw":
-        eta = options["eta"]
+        if options["etavar"]:
+            eta = 0.9
+        else:
+            eta = options["eta"]
         quot = 1.0
     f = cost[0]
 
@@ -1704,6 +1728,12 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             qold = quot
             quot = eta*qold + 1.0
             f = (eta*qold*f+ftrial)/quot
+            if options["etavar"]:
+                eta = max(0.75*eta, 0.0) #  starting from eta = 0.9
+                if abs(eta)<0.1:
+                    eta = 0.0
+                if options["verbose"] > 0:
+                    print("       New eta = {}".format(eta), file=fileobj)
 
         # Test optimality of X
         grad = 2.0*np.dot(A.T, np.dot(R, problem.C.T))

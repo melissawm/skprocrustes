@@ -151,6 +151,9 @@ class TestSPGSolver(TestCase):
     def test_setoptions_eta(self):
         assert_raises(Exception, skp.SPGSolver, eta=" ")
 
+    def test_setoptions_etavar(self):
+        assert_raises(Exception, skp.SPGSolver, etavar=1)
+        
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.SPGSolver, maxiter=10.5)
 
@@ -192,6 +195,9 @@ class TestGKBSolver(TestCase):
     def test_setoptions_eta(self):
         assert_raises(Exception, skp.GKBSolver, eta=" ")
 
+    def test_setoptions_etavar(self):
+        assert_raises(Exception, skp.GKBSolver, etavar=1)
+        
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GKBSolver, maxiter=10.5)
 
@@ -221,6 +227,9 @@ class TestEBSolver(TestCase):
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.EBSolver, full_results=" ")
 
+    def test_setoptions_filename(self):
+        assert_raises(Exception, skp.EBSolver, filename=1)
+
     def test_setoptions_tol(self):
         assert_raises(Exception, skp.EBSolver, tol=" ")
 
@@ -243,6 +252,9 @@ class TestGPISolver(TestCase):
 
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.GPISolver, full_results=" ")
+
+    def test_setoptions_filename(self):
+        assert_raises(Exception, skp.GPISolver, filename=1)
 
     def test_setoptions_tol(self):
         assert_raises(Exception, skp.GPISolver, tol=" ")
@@ -279,6 +291,31 @@ class TestSpectralSolver(TestCase):
         mysolver = skp.SPGSolver(verbose=0)
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_spg_eta(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.SPGSolver(verbose=0, eta=0.1)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_spg_etavar(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.SPGSolver(verbose=0, etavar=True)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_spg_filename(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.SPGSolver(verbose=0, filename="testspgfilename.txt")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    # TODO test below is failing. why?
+    ### def test_spectral_solver_spg_changevar(self):
+    ###     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    ###     mysolver = skp.SPGSolver(verbose=0, changevar=True)
+    ###     result = mysolver.solve(problem)
+    ###     assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
 #    def test_spectral_solver_spg_constraint_violation(self):
 #    não sei como fazer
@@ -320,6 +357,29 @@ class TestSpectralSolver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
+    def test_spectral_solver_gkb_eta(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, eta=0.1)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_gkb_etavar(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, etavar=True)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_gkb_filename(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_spectral_solver_gkb_changevar(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, changevar=True)
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
 class TestBlockBidiag(TestCase):
 
@@ -411,6 +471,12 @@ class TestEB_Solver(TestCase):
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
         assert_allclose(result.fun, 1e-6, atol=1e-2)
 
+    def test_eb_solver_filename(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.EBSolver(verbose=0, filename="testebfilename.txt")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
     # EBSolver does not work for problem 3
     # def test_eb_solver_known_solution_problem_3(self):
     #     problem = skp.ProcrustesProblem((50,50,5,5), problemnumber=3)
@@ -460,6 +526,12 @@ class TestGPI_Solver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-2)
         #assert_allclose(result.fun, 1e-6, atol=1e-2)
+
+    def test_gpi_solver_filename(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GPISolver(verbose=0, filename="testgpifilename.txt")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-2)
 
     # GPISolver does not solve problem 3
 
