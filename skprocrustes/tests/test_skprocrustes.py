@@ -153,7 +153,7 @@ class TestSPGSolver(TestCase):
 
     def test_setoptions_etavar(self):
         assert_raises(Exception, skp.SPGSolver, etavar=1)
-        
+
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.SPGSolver, maxiter=10.5)
 
@@ -168,6 +168,9 @@ class TestSPGSolver(TestCase):
 
     def test_setoptions_polar(self):
         assert_raises(Exception, skp.SPGSolver, polar=1)
+
+    def test_setoptions_timer(self):
+        assert_raises(Exception, skp.SPGSolver, timer=3)
 
 
 # Testing functions inside GKBSolver class:
@@ -197,7 +200,7 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_etavar(self):
         assert_raises(Exception, skp.GKBSolver, etavar=1)
-        
+
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GKBSolver, maxiter=10.5)
 
@@ -212,6 +215,9 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_polar(self):
         assert_raises(Exception, skp.GKBSolver, polar=1)
+
+    def test_setoptions_timer(self):
+        assert_raises(Exception, skp.GKBSolver, timer=3)
 
 
 # Testing functions inside EBSolver class:
@@ -239,6 +245,9 @@ class TestEBSolver(TestCase):
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.EBSolver, verbose=2)
 
+    def test_setoptions_timer(self):
+        assert_raises(Exception, skp.EBSolver, timer=3)
+
 
 # Testing functions inside GPISolver class:
 class TestGPISolver(TestCase):
@@ -264,6 +273,9 @@ class TestGPISolver(TestCase):
 
     def test_setoptions_verbose(self):
         assert_raises(Exception, skp.GPISolver, verbose=2)
+
+    def test_setoptions_timer(self):
+        assert_raises(Exception, skp.GPISolver, timer=3)
 
 
 # Other functions
