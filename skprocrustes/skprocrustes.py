@@ -512,6 +512,8 @@ class SPGSolver(ProcrustesSolver):
         #
         # - gtol: tolerance for detecting convergence on the gradient
         #
+        # - eta: parameter for the nonmonotone cost function computation.
+        #
         # - maxiter: maximum number of iterations allowed
         #
         # - verbose: verbosity level
@@ -530,10 +532,9 @@ class SPGSolver(ProcrustesSolver):
         #          the GKB subproblem via an SVD decomposition or via iterative
         #          methods to compute the polar decomposition.
         #          Can take values ``ns`` or ``None``.
-        # - ``precond``: (*default*: ``None``)
-        #                option to decide if we are going to use
-        #                preconditioners or not. Can take values ``stupid``
-        #                or ``None``.
+        # - precond: option to decide if we are going to use
+        #            preconditioners or not. Can take values ``stupid``
+        #            or ``None``.
 
         super()._setoptions()
         self.options = options
@@ -553,6 +554,11 @@ class SPGSolver(ProcrustesSolver):
             self.options["gtol"] = 1e-3
         elif type(self.options["gtol"]) != float:
             raise Exception("gtol must be a float")
+
+        if "eta" not in keys:
+            self.options["eta"] = 0.2
+        elif type(self.options["eta"]) != float:
+            raise Exception("eta must be a float")
 
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
@@ -1405,7 +1411,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
     quot = None
     if options["strategy"] == "newfw":
-        eta = 0.2
+        eta = options["eta"]
         quot = 1.0
     f = cost[0]
 
@@ -1436,6 +1442,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     Xold = X.copy()
     Xtrial = None
     Rtrial = None
+    blobopresidual = 0.0
 
     while (normg > options["gtol"]
            and flag_while
