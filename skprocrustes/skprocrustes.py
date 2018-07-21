@@ -525,10 +525,14 @@ class SPGSolver(ProcrustesSolver):
         #
         # - gtol: tolerance for detecting convergence on the gradient
         #
+<<<<<<< HEAD
         # - eta: parameter for the nonmonotone cost computation
         #
         # - etavar: decide if we are going to vary the parameter eta
         #           for the nonmonotone cost computation
+=======
+        # - eta: parameter for the nonmonotone cost function computation.
+>>>>>>> f0018d5... Small corrections. added eta as parameter.
         #
         # - maxiter: maximum number of iterations allowed
         #
@@ -548,8 +552,14 @@ class SPGSolver(ProcrustesSolver):
         #          the GKB subproblem via an SVD decomposition or via iterative
         #          methods to compute the polar decomposition.
         #          Can take values ``ns`` or ``None``.
+<<<<<<< HEAD
         # - timer: decide if we are going to time this run.
         #
+=======
+        # - precond: option to decide if we are going to use
+        #            preconditioners or not. Can take values ``stupid``
+        #            or ``None``.
+>>>>>>> f0018d5... Small corrections. added eta as parameter.
 
         super()._setoptions()
         self.options = options
@@ -580,11 +590,14 @@ class SPGSolver(ProcrustesSolver):
         elif type(self.options["eta"]) != float:
             raise Exception("eta must be a float")
 
+<<<<<<< HEAD
         if "etavar" not in keys:
             self.options["etavar"] = False
         elif type(self.options["etavar"]) != bool:
             raise Exception("etavar must be a boolean")
 
+=======
+>>>>>>> f0018d5... Small corrections. added eta as parameter.
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
@@ -1576,10 +1589,14 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
     if options["strategy"] == "newfw":
+<<<<<<< HEAD
         if options["etavar"]:
             eta = 0.9
         else:
             eta = options["eta"]
+=======
+        eta = options["eta"]
+>>>>>>> f0018d5... Small corrections. added eta as parameter.
         quot = 1.0
     f = cost[0]
 
@@ -1613,7 +1630,13 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     flag_inner = True
     ftrial = 0.0
     Xold = X.copy()
+<<<<<<< HEAD
     oldResidual = 0.0
+=======
+    Xtrial = None
+    Rtrial = None
+    blobopresidual = 0.0
+>>>>>>> f0018d5... Small corrections. added eta as parameter.
 
     while (normg > options["gtol"]
            and flag_while
