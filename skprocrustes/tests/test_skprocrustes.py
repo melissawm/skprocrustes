@@ -145,6 +145,9 @@ class TestSPGSolver(TestCase):
     def test_setoptions_gtol(self):
         assert_raises(Exception, skp.SPGSolver, gtol=" ")
 
+    def test_setoptions_eta(self):
+        assert_raises(Exception, skp.SPGSolver, eta=" ")
+
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.SPGSolver, maxiter=10.5)
 
@@ -180,6 +183,9 @@ class TestGKBSolver(TestCase):
     def test_setoptions_gtol(self):
         assert_raises(Exception, skp.GKBSolver, gtol=" ")
 
+    def test_setoptions_eta(self):
+        assert_raises(Exception, skp.GKBSolver, eta=" ")
+        
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GKBSolver, maxiter=10.5)
 

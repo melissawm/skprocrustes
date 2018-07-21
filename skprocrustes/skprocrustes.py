@@ -453,6 +453,8 @@ class SPGSolver(ProcrustesSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
+       -  ``eta``: (*default*: ``0.2``)
+          parameter for the nonmonotone cost computation 
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -509,6 +511,8 @@ class SPGSolver(ProcrustesSolver):
         #
         # - gtol: tolerance for detecting convergence on the gradient
         #
+        # - eta: parameter for the nonmonotone cost computation
+        #
         # - maxiter: maximum number of iterations allowed
         #
         # - verbose: verbosity level
@@ -547,6 +551,11 @@ class SPGSolver(ProcrustesSolver):
         elif type(self.options["gtol"]) != float:
             raise Exception("gtol must be a float")
 
+        if "eta" not in keys:
+            self.options["eta"] = 0.2
+        elif type(self.options["eta"]) != float:
+            raise Exception("eta must be a float")
+        
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
@@ -1387,7 +1396,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
     if options["strategy"] == "newfw":
-        eta = 0.2
+        eta = options["eta"]
         quot = 1.0
     f = cost[0]
 
