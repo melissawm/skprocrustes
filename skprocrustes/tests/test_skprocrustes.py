@@ -139,6 +139,9 @@ class TestSPGSolver(TestCase):
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.SPGSolver, full_results=" ")
 
+    def test_setoptions_filename(self):
+        assert_raises(Exception, skp.SPGSolver, filename=1)
+
     def test_setoptions_strategy(self):
         assert_raises(Exception, skp.SPGSolver, strategy=" ")
 
@@ -177,6 +180,9 @@ class TestGKBSolver(TestCase):
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.GKBSolver, full_results=" ")
 
+    def test_setoptions_filename(self):
+        assert_raises(Exception, skp.GKBSolver, filename=1)
+
     def test_setoptions_strategy(self):
         assert_raises(Exception, skp.GKBSolver, strategy=" ")
 
@@ -185,7 +191,7 @@ class TestGKBSolver(TestCase):
 
     def test_setoptions_eta(self):
         assert_raises(Exception, skp.GKBSolver, eta=" ")
-        
+
     def test_setoptions_maxiter(self):
         assert_raises(Exception, skp.GKBSolver, maxiter=10.5)
 
@@ -276,7 +282,6 @@ class TestSpectralSolver(TestCase):
 
 #    def test_spectral_solver_spg_constraint_violation(self):
 #    não sei como fazer
-        
 
     # gkb solver
     def test_spectral_solver_known_solution_gkb_small(self):
