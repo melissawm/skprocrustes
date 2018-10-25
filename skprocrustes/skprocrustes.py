@@ -34,6 +34,9 @@ import numpy as np
 from scipy import linalg as sp
 from scipy.sparse import linalg as spl
 import matplotlib.pyplot as plt
+import sys
+import datetime
+import time
 
 # standard status messages of optimizers (based on scipy.optimize)
 _status_message = {'success': 'Optimization terminated successfully.',
@@ -59,7 +62,6 @@ class ProcrustesProblem:
     Usage example (user defined problem):
 
        >>> import skprocrustes as skp
-       >>> import numpy as np
        >>> A = ... # given by the user
        >>> B = ... # given by the user
        >>> C = ... # given by the user
@@ -389,7 +391,7 @@ class OptimizeResult(dict):
         print(" Summary:")
         print("=========")
         for k, v in self.items():
-            if k != "solution":
+            if k != "solution" and v != np.inf:
                 print(k, ": {}".format(v))
 
 
@@ -444,6 +446,9 @@ class SPGSolver(ProcrustesSolver):
        - ``full_results``: (*default*: ``False``)
           Return list of criticality values at each iteration (for later
           comparison between solvers)
+       - ``filename``: (*default*: sys.stdout)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
        - ``strategy``: (*default*: ``"newfw"``)
           - ``"monotone"``:
              monotone trust region
@@ -453,6 +458,11 @@ class SPGSolver(ProcrustesSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
+       -  ``eta``: (*default*: ``0.2``)
+          parameter for the nonmonotone cost computation
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -464,6 +474,18 @@ class SPGSolver(ProcrustesSolver):
        - ``changevar``: (*default*: ``False``)
           boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
+       - ``bloboptest``: (*default*: ``False``)
+          boolean option to test the computation of a new residual at lower
+          GKB levels to decide if we are going to iterate at this level or
+          give up and add a new block to the bidiagonalization.
+       - ``polar``: (*default*: ``None``)
+          option to decide if we are going to compute the solution of the
+          GKB subproblem via an SVD decomposition or via iterative methods
+          to compute the polar decomposition.
+          Can take values ``ns`` or ``None``.
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
+
 
     Output:
 
@@ -493,12 +515,20 @@ class SPGSolver(ProcrustesSolver):
         #
         # - full_results: return list of criticality values at each iteration
         #
+        # - filename: Decides if we are going to output print statements to
+        #             stdout or to a file called filename
+        #
         # - strategy:
         #   > "monotone": monotone trust region
         #   > "bazfr"   : nonmonotone method according to [1]
         #   > "newfw"   : nonmonotone method according to [2]
         #
         # - gtol: tolerance for detecting convergence on the gradient
+        #
+        # - eta: parameter for the nonmonotone cost computation
+        #
+        # - etavar: decide if we are going to vary the parameter eta
+        #           for the nonmonotone cost computation
         #
         # - maxiter: maximum number of iterations allowed
         #
@@ -510,6 +540,16 @@ class SPGSolver(ProcrustesSolver):
         # - changevar: boolean option to allow for a change of variables
         #              before starting the method. Currently disabled
         #              due to bad performance
+        # - bloboptest: boolean option to test the computation of a new
+        #               residual at lower GKB levels to decide if we are
+        #               going to iterate at this level or give up and add a
+        #               new block to the bidiagonalization.
+        # - polar: option to decide if we are going to compute the solution of
+        #          the GKB subproblem via an SVD decomposition or via iterative
+        #          methods to compute the polar decomposition.
+        #          Can take values ``ns`` or ``None``.
+        # - timer: decide if we are going to time this run.
+        #
 
         super()._setoptions()
         self.options = options
@@ -520,6 +560,11 @@ class SPGSolver(ProcrustesSolver):
         elif type(self.options["full_results"]) != bool:
             raise Exception("full_results must be a boolean")
 
+        if "filename" not in keys:
+            self.options["filename"] = None
+        elif type(self.options["filename"]) != str:
+            raise Exception("filename must be a string")
+
         if "strategy" not in keys:
             self.options["strategy"] = "newfw"
         elif self.options["strategy"] not in ("monotone", "bazfr", "newfw"):
@@ -529,6 +574,16 @@ class SPGSolver(ProcrustesSolver):
             self.options["gtol"] = 1e-3
         elif type(self.options["gtol"]) != float:
             raise Exception("gtol must be a float")
+
+        if "eta" not in keys:
+            self.options["eta"] = 0.2
+        elif type(self.options["eta"]) != float:
+            raise Exception("eta must be a float")
+
+        if "etavar" not in keys:
+            self.options["etavar"] = False
+        elif type(self.options["etavar"]) != bool:
+            raise Exception("etavar must be a boolean")
 
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
@@ -545,6 +600,21 @@ class SPGSolver(ProcrustesSolver):
         elif type(self.options["changevar"]) != bool:
             raise Exception("changevar must be True or False")
 
+        if "bloboptest" not in keys:
+            self.options["bloboptest"] = False
+        elif type(self.options["bloboptest"]) != bool:
+            raise Exception("bloboptest must be True or False")
+
+        if "polar" not in keys:
+            self.options["polar"] = None
+        elif self.options["polar"] not in (None, "ns"):
+            raise Exception("polar must be ns or None")
+
+        if "timer" not in keys:
+            self.options["timer"] = False
+        elif type(self.options["timer"]) != bool:
+            raise Exception("timer must be boolean")
+
     def solve(self, problem):
 
         """
@@ -559,9 +629,19 @@ class SPGSolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
+        self.open_file()
+        t0 = time.time()
         X, fval, normgrad, exitcode, msg = spectral_setup(problem,
                                                           self.solvername,
-                                                          self.options)
+                                                          self.options,
+                                                          self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -569,27 +649,37 @@ class SPGSolver(ProcrustesSolver):
                 raise Exception("For full results, set "
                                 "problem.stats[\"total_fun\"] and "
                                 "problem.stats[\"total_grad\"]")
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    normgrad=normgrad,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"],
-                                    total_fun=problem.stats["total_fun"],
-                                    total_grad=problem.stats["total_grad"])
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_grad = problem.stats["total_grad"]
         else:
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    normgrad=normgrad,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"])
+            total_fun = np.inf
+            total_grad = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                normgrad=normgrad,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                total_fun=total_fun,
+                                total_grad=total_grad)
 
         return result
+
+    def open_file(self):
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
+
+    def close_file(self):
+        if self.options["filename"] is not None:
+            self.file.close()
 
 
 class GKBSolver(SPGSolver):
@@ -612,6 +702,9 @@ class GKBSolver(SPGSolver):
        - ``full_results``: (*default*: ``False``)
           Return list of criticality values at each iteration (for later
           comparison between solvers)
+       - ``filename``: (*default*: None)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
        - ``strategy``: (*default*: ``"newfw"``)
           - ``"monotone"``:
              monotone trust region
@@ -621,6 +714,11 @@ class GKBSolver(SPGSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
+       -  ``eta``: (*default*: ``0.2``)
+          parameter for the nonmonotone cost computation
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -632,6 +730,17 @@ class GKBSolver(SPGSolver):
        - ``changevar``: (*default*: ``False``)
           boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
+       - ``bloboptest``: (*default*: ``False``)
+          boolean option to test the computation of a new residual at lower
+          GKB levels to decide if we are going to iterate at this level or
+          give up and add a new block to the bidiagonalization.
+       - ``polar``: (*default*: ``None``)
+          option to decide if we are going to compute the solution of the
+          GKB subproblem via an SVD decomposition or via iterative methods
+          to compute the polar decomposition.
+          Can take values ``ns`` or ``None``.
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
 
     Output:
 
@@ -662,9 +771,19 @@ class GKBSolver(SPGSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
+        self.open_file()
+        t0 = time.time()
         X, fval, normgrad, exitcode, msg = spectral_setup(problem,
                                                           self.solvername,
-                                                          self.options)
+                                                          self.options,
+                                                          self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -672,29 +791,34 @@ class GKBSolver(SPGSolver):
                 raise Exception("For full results, set "
                                 "problem.stats[\"total_fun\"] and "
                                 "problem.stats[\"total_grad\"]")
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    normgrad=normgrad,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"],
-                                    blocksteps=problem.stats["blocksteps"],
-                                    total_fun=problem.stats["total_fun"],
-                                    total_grad=problem.stats["total_grad"])
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_grad = problem.stats["total_grad"]
         else:
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    normgrad=normgrad,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"],
-                                    blocksteps=problem.stats["blocksteps"])
+            total_fun = np.inf
+            total_grad = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                normgrad=normgrad,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                blocksteps=problem.stats["blocksteps"],
+                                total_fun=total_fun,
+                                total_grad=total_grad)
 
         return result
+
+    def open_file(self):
+        super().open_file()
+
+    def close_file(self):
+        super().close_file()
 
 
 class EBSolver(ProcrustesSolver):
@@ -723,6 +847,11 @@ class EBSolver(ProcrustesSolver):
           verbosity level. Current options:
           - ``0``: only convergence info
           - ``1``: only show time and final stats
+       - ``filename``: (*default*: None)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
 
     Output:
 
@@ -748,7 +877,16 @@ class EBSolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
-        X, fval, exitcode, msg = eb_solver(problem, self.options)
+        self.open_file()
+        t0 = time.time()
+        X, fval, exitcode, msg = eb_solver(problem, self.options, self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -756,23 +894,24 @@ class EBSolver(ProcrustesSolver):
                 raise Exception("For full results, set "
                                 "problem.stats[\"total_fun\"] and "
                                 "problem.stats[\"total_crit\"]")
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"],
-                                    total_fun=problem.stats["total_fun"],
-                                    total_crit=problem.stats["total_crit"])
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_crit = problem.stats["total_crit"]
         else:
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"])
+            total_fun = np.inf
+            total_crit = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                total_fun=total_fun,
+                                total_crit=total_crit)
 
         return result
 
@@ -802,6 +941,10 @@ class EBSolver(ProcrustesSolver):
         #            1: only show time and final stats
         #            2: show outer iterations
         #            3: everything (except debug which is set separately)
+        #
+        # - filename: Decides if we are going to output print statements to
+        #             stdout or to a file called ``filename``
+        # - timer: decide if we are going to time this run.
 
         # TODO in the future, if we allow non square problems
         # ALSO enable this is tests.
@@ -838,6 +981,26 @@ class EBSolver(ProcrustesSolver):
         elif self.options["verbose"] not in (0, 1):
             raise Exception("verbose must be 0, or 1")
 
+        if "filename" not in keys:
+            self.options["filename"] = None
+        elif type(self.options["filename"]) != str:
+            raise Exception("filename must be string")
+
+        if "timer" not in keys:
+            self.options["timer"] = False
+        elif type(self.options["timer"]) != bool:
+            raise Exception("timer must be boolean")
+
+    def open_file(self):
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
+
+    def close_file(self):
+        if self.options["filename"] is not None:
+            self.file.close()
+
 
 class GPISolver(ProcrustesSolver):
 
@@ -865,6 +1028,11 @@ class GPISolver(ProcrustesSolver):
           verbosity level. Current options:
           - ``0``: only convergence info
           - ``1``: only show time and final stats
+       - ``filename``: (*default*: None)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
 
     Output:
 
@@ -891,7 +1059,17 @@ class GPISolver(ProcrustesSolver):
           ``result``: ``OptimizationResult`` instance
         """
 
-        X, fval, exitcode, msg = gpi_solver(problem, self.options)
+        self.open_file()
+        t0 = time.time()
+        X, fval, exitcode, msg = gpi_solver(problem, self.options,
+                                            self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
 
         if self.options["full_results"]:
             if "total_fun" not in problem.stats.keys() or \
@@ -899,23 +1077,24 @@ class GPISolver(ProcrustesSolver):
                 raise Exception("For full results, set "
                                 "problem.stats[\"total_fun\"] and "
                                 "problem.stats[\"total_crit\"]")
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    message=msg,
-                                    solution=X,
-                                    fun=fval,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"],
-                                    total_fun=problem.stats["total_fun"],
-                                    total_crit=problem.stats["total_crit"])
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_crit = problem.stats["total_crit"]
         else:
-            result = OptimizeResult(success=(exitcode == 0),
-                                    status=exitcode,
-                                    solution=X,
-                                    message=msg,
-                                    fun=fval,
-                                    nbiter=problem.stats["nbiter"],
-                                    nfev=problem.stats["fev"])
+            total_fun = np.inf
+            total_crit = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                total_fun=total_fun,
+                                total_crit=total_crit)
 
         return result
 
@@ -945,6 +1124,9 @@ class GPISolver(ProcrustesSolver):
         #            1: only show time and final stats
         #            2: show outer iterations
         #            3: everything (except debug which is set separately)
+        # - filename: Decides if we are going to output print statements to
+        #             stdout or to a file called ``filename``
+        # - timer: decide if we are going to time this run.
 
         super()._setoptions()
         self.options = options
@@ -970,8 +1152,28 @@ class GPISolver(ProcrustesSolver):
         elif self.options["verbose"] not in (0, 1):
             raise Exception("verbose must be 0 or 1")
 
+        if "filename" not in keys:
+            self.options["filename"] = None
+        elif type(self.options["filename"]) != str:
+            raise Exception("filename must be string")
 
-def spectral_setup(problem, solvername, options):
+        if "timer" not in keys:
+            self.options["timer"] = False
+        elif type(self.options["timer"]) != bool:
+            raise Exception("timer must be boolean")
+
+    def open_file(self):
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
+
+    def close_file(self):
+        if self.options["filename"] is not None:
+            self.file.close()
+
+
+def spectral_setup(problem, solvername, options, fileobj):
 
     """
     Set up parameters according to the optimization method chosen.
@@ -984,6 +1186,9 @@ def spectral_setup(problem, solvername, options):
         problem.stats["total_fun"] = []
         problem.stats["total_grad"] = []
 
+    # The inner flag tells us if we should compute the lower
+    # BLOBOP residual in spectral_solver or not.
+    inner = False
     debug = False
     verbose = options["verbose"]
 
@@ -1008,30 +1213,45 @@ def spectral_setup(problem, solvername, options):
         # Computing starting point
         #
         if options["changevar"]:
-            # Change of variables: This is done to improve performance.
+            # Change of variables: This is done to try to improve performance.
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
+
             U, S, VT = sp.svd(problem.A)
             problem.stats["svd"] = problem.stats["svd"]+1
-            X = np.copy(VT[0:p, 0:n].T)
-            # Aorig = problem.A.copy()
-            Ak = np.zeros((m, n))
-            for i in range(0, min(m, n)):
-                Ak[i, i] = S[i]
-            Bk = np.dot(U.T, problem.B)
+
+            # X = np.copy(VT[0:p, 0:n].T)
+            # # Aorig = problem.A.copy()
+            # Ak = np.zeros((m, n))
+            # for i in range(0, min(m, n)):
+            #     Ak[i, i] = S[i]
+            # Bk = np.dot(U.T, problem.B)
+
+            mu = np.max(S)-np.min(S)
+            X = np.zeros((n, p))
+            Bk = np.copy(problem.B)/mu
+            Ak = np.copy(problem.A)/mu
+
         else:
             X = np.zeros((n, p))
             Bk = np.copy(problem.B)
             Ak = np.copy(problem.A)
 
         if verbose > 0:
-            print("                SPG Solver")
+            print("=========================================", file=fileobj)
+            print("                SPG Solver", file=fileobj)
+            print("=========================================", file=fileobj)
+            print("Options: {}".format(options), file=fileobj)
+            print("Execution date: {}; {}"
+                  .format(datetime.datetime.now().date(),
+                          datetime.datetime.now().time()), file=fileobj)
 
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 X, Ak,
                                                                 Bk, solvername,
-                                                                options)
+                                                                options, inner,
+                                                                fileobj)
 
         problem.stats["nbiter"] = nbiter
 
@@ -1048,7 +1268,14 @@ def spectral_setup(problem, solvername, options):
 
         problem.stats["blocksteps"] = 0
         if verbose > 0:
-            print("                GKB Solver")
+            print("=========================================", file=fileobj)
+            print("                GKB Solver", file=fileobj)
+            print("=========================================", file=fileobj)
+            print("Options: {}".format(options), file=fileobj)
+            print("Execution date: {}; {}"
+                  .format(datetime.datetime.now().date(),
+                          datetime.datetime.now().time()), file=fileobj)
+
         residuals = []
         # Setting up number of steps allowed in block Lanczos mode
         maxsteps = m/q
@@ -1056,134 +1283,119 @@ def spectral_setup(problem, solvername, options):
         # k = current Lanczos block
         k = 1
         while k <= maxsteps and normgrad > options["gtol"]:
+
             # T = Ak is the partial bidiagonalization of A
             # [U,Ak,V] = bidiag3_block(A,B,q,steps);
             # In blockbidiag, we do a loop with i = partial+1,nsteps;
             # this is the block we are currently working on
 
-            # Current block starts at (partial+1)*s, ends at nsteps*s
+            # Current block starts at (partial+1)*p, ends at nsteps*p
             partial = k-1
             nsteps = k
 
-            # largedim and smalldim are the current dimensions of our problem:
-            # A(largedim, smalldim), B(largedim, q), X(smalldim, p)
-            largedim = q*(k+1)
-            # if largedim < m:
-            #    Incomplete bidiagonalization:
-            #    T(q*(k+1),q*k), U(m,q*(k+1)), V(n,q*k)
-            smalldim = q*k
-            # else:
-            #    smalldim = m # = n
-
             if k < maxsteps:
+
+                inner = True
+                # largedim and smalldim are the current dimensions of
+                # our problem:
+                # A(largedim, smalldim), B(largedim, q), X(smalldim, p)
+
+                #    Incomplete bidiagonalization:
+                #    T(q*(k+1),q*k), U(m,q*(k+1)), V(n,q*k)
+                largedim = q*(k+1)
+                smalldim = q*k
+
                 # B1 is a p by p block used in the computation of the new
                 # BLOBOP residual
-
                 U, V, T, B1, reorth = blockbidiag(problem, U, V, T,
                                                   nsteps, partial)
 
-                # Akp1 is ok
-                Akp1 = T[largedim-q:largedim, smalldim:smalldim+q]
+                # Akp1 is the last block of T used in the computation
+                # of the BLOBOP residual. (Only for k < maxsteps)
+                Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
 
                 if options["verbose"] > 2:
                     print("\n       Finished bidiag: Reorth: {}\n"
-                          .format(reorth))
+                          .format(reorth), file=fileobj)
             else:
                 largedim = q*k
                 smalldim = q*k
+                # Since k = maxsteps, we are not going to compute the
+                # blobop (lower) residual inside spectral_solver
+                inner = False
 
             if options["verbose"] > 0:
                 print(" ----> GKB Iteration {}: Tk is {}x{}"
-                      .format(k, largedim, smalldim))
+                      .format(k, largedim, smalldim), file=fileobj)
 
             # A(m,n) X(n,p) C(p,q) - B(m,q)
 
             debug = False
             if debug:
-                print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
-                print("U = {}\n".format(U[0:m, 0:largedim]))
-                print("V = {}\n".format(V[0:n, 0:smalldim]))
-                AV = np.dot(problem.A, V[0:n, 0:smalldim])
-                prod = np.dot(U[0:m, 0:largedim].T, AV)
-                print("T - UT*A*V = {}\n"
-                      .format(T[0:largedim, 0:smalldim] - prod))
-
-            if options["verbose"] > 2:
+                # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
+                # print("U = {}\n".format(U[0:m, 0:largedim]))
+                # print("V = {}\n".format(V[0:n, 0:smalldim]))
                 AV = np.dot(problem.A, V[0:n, 0:smalldim])
                 prod = np.dot(U[0:m, 0:largedim].T, AV)
                 print("       MaxError = {}\n"
-                      .format(np.max(T[0:largedim, 0:smalldim] - prod)))
+                      .format(np.max(T[0:largedim, 0:smalldim] - prod)),
+                      file=fileobj)
 
             # Bk(q*(k+1),q) = U(m,q*(k+1))'*B(m,q)
             Bk = np.dot(U[0:m, 0:largedim].T, problem.B)
 
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
 
-            if k == 1:
-                X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
-            else:
-                # X(1:q*(k-1),1:p) = result from last run
-                X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
+            # if k == 1:
+            X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
+            # else:
+            #    X[0:q*(k-1),0:p] = result from last run
+            #    X = np.zeros((smalldim, p))
+            #    X[0:q*(k-1), 0:p] = np.copy(Yk
+            #    X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
 
-            VT = np.zeros((n, n))
-            VT[0:smalldim, 0:n] = np.copy(V[0:n, 0:smalldim].T)
+            Tk = T[0:largedim, 0:smalldim]
+            if k < maxsteps:
+                Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
+                # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
+                #                     np.dot(Akp1, Bkp1))
+                blobopprod = np.dot(Akp1, Bkp1)
 
-            # normgradlower
-            exitcode, f, X[0:smalldim, 0:p], normgradlower, outer, msg \
+            exitcode, f, Yk, normgradlower, outer, msg \
                 = spectral_solver(problem, largedim, smalldim,
-                                  X[0:smalldim, 0:p],
-                                  T[0:largedim, 0:smalldim],
-                                  Bk[0:largedim, 0:q],
-                                  solvername, options)
+                                  X[0:smalldim, 0:p], Tk,
+                                  Bk[0:largedim, 0:q], solvername,
+                                  options, inner, fileobj, B1, blobopprod)
 
+            # TODO: add counter for inner iterations
             problem.stats["nbiter"] = (problem.stats["nbiter"] +
                                        (largedim/m)*outer)
 
-            Yk = np.copy(X[0:smalldim, 0:p])
             Xk = np.dot(V[0:n, 0:smalldim], Yk)
 
             R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
             residual = sp.norm(R, 'fro')**2
             residuals.append(residual)
 
+            # Test optimality of X
             grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-            gradproj = np.dot(Xk, np.dot(Xk.T, grad) + np.dot(grad.T, Xk))
+            gradproj = np.dot(Xk, np.dot(Xk.T, grad)+np.dot(grad.T, Xk))
             - 2.0*grad
             normgrad = sp.norm(gradproj, 'fro')
 
             if options["verbose"] > 1:
                 print("\n       Gradient norm       = {}"
-                      .format(normgrad))
+                      .format(normgrad), file=fileobj)
                 print("       Residual norm       = {}\n"
-                      .format(residual))
+                      .format(residual), file=fileobj)
 
             # ##################################### BLOBOP
-            if k < maxsteps:
-                calB = np.zeros((largedim, p))
-                calB[0:p, 0:p] = B1
-                Tk = T[0:largedim, 0:smalldim]
-                res1 = np.dot((np.eye(smalldim, smalldim) - np.dot(Yk, Yk.T)),
-                              np.dot(Tk.T, np.dot(Tk, Yk) - calB))
-                resBlobop1 = sp.norm(res1, 'fro')
-
-                # Z(p)(k) is the last pxp block of Yk.
-                Zpk = np.copy(Yk[(k-1)*p:smalldim, 0:p])
-                Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
-
-                prod2 = np.dot(V[0:n, smalldim:smalldim+p],
-                               np.dot(Akp1, np.dot(Bkp1, Zpk)))
-
-                # prod = 0
-                # prod = np.dot(np.dot(Vk,
-                #                      np.dot(Yk, np.dot(Yk.T, Vk.T))), prod2)
-
-                res2 = prod2
-                resBlobop2 = sp.norm(res2, "fro")
-
-                newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
-                if options["verbose"] > 1:
-                    print("       New BLOBOP Residual = {}\n"
-                          .format(newResidual))
+            # if k < maxsteps:
+            #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
+            #                           np.dot(problem.A.T,
+            #                                 np.dot(problem.A, Xk)-problem.B))
+            #     print(" Real residual = {}"
+            #           .format(sp.norm(realresidual, "fro")))
             # ##################################### BLOBOP
 
             k = k + 1
@@ -1201,30 +1413,38 @@ def spectral_setup(problem, solvername, options):
     else:
         msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
         if options["verbose"] > 0:
-            print(msg)
-            print("                Using SPG Solver:")
+            print(msg, file=fileobj)
+            print("                Using SPG Solver:", file=fileobj)
+
+        inner = False
 
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 Xk, problem.A,
                                                                 problem.B,
                                                                 "spg",
-                                                                options)
+                                                                options,
+                                                                inner,
+                                                                fileobj)
         problem.stats["nbiter"] += nbiter
         R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
         residual = sp.norm(R, 'fro')**2
-        print("residual: {}".format(residual))
-        grad, normg = optimality(problem.A, problem.C, X, R)
-        print("normg: {}".format(normg))
+
+        # Test optimality of X
+        grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
+        gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
+        normg = sp.norm(gradproj, 'fro')
+
         if normg < options["gtol"]:
             msg = _status_message['success']
 
     if options["verbose"] > 0:
-        print(msg)
+        print(msg, file=fileobj)
 
     return Xk, f, normgrad, exitcode, msg
 
 
-def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
+def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
+                    inner, fileobj, B1=None, blobopprod=0.0):
 
     """
     Nonmonotone Spectral Projected Gradient solver for problems of the type
@@ -1261,6 +1481,11 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
        be reported).
     - ``options``: ``dict``
        Solver options. Keys available are:
+          -  ``eta``: ``float``
+             parameter for the nonmonotone cost computation
+          - ``etavar``: ``bool``
+             decide if we are going to vary the parameter eta
+             for the nonmonotone cost computation
           - ``maxiter``: ``int``
              Maximum number of iterations allowed
           - ``strategy``: ``str``
@@ -1271,6 +1496,16 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
              Can take values in (0,1,2,3)
           - ``gtol``: ``float``
              Tolerance for convergence.
+          - ``bloboptest``: (*default*: ``False``)
+             boolean option to test the computation of a new residual at lower
+             GKB levels to decide if we are going to iterate at this level or
+             give up and add a new block to the bidiagonalization.
+          - ``polar``: (*default*: ``None``)
+             option to decide if we are going to compute the solution of the
+             GKB subproblem via an SVD decomposition or via iterative methods
+             to compute the polar decomposition.
+             Can take values ``ns`` or ``None``.
+
 
     Output:
 
@@ -1313,7 +1548,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
     # Sufficient decrease parameter for trust region
     # (trratio must be larger than beta1)
-    beta1 = 1.0e-10  # beta1 = 1.0e-4_wp, beta1 = 0.5_wp
+    beta1 = 1.0e-4  # beta1 = 1.0e-10, beta1 = 0.5
 
     # memory is the nonmonotone parameter, used to determine how many
     # iterations will be used in the BAZFR strategy to compare the current
@@ -1329,7 +1564,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         np.dot(problem.C, problem.C.T), 'fro')*sp.norm(np.dot(A.T, A), 'fro')
 
     if options["verbose"] > 2:
-        print("\n          Lu = {}\n".format(Lu))
+        print("\n          Lu = {}".format(Lu), file=fileobj)
 
     # R is the residual, norm(R,fro) is the cost.
     # R = A*X*C-B
@@ -1341,12 +1576,17 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
     if options["strategy"] == "newfw":
-        eta = 0.2
+        if options["etavar"]:
+            eta = 0.9
+        else:
+            eta = options["eta"]
         quot = 1.0
     f = cost[0]
 
     # Test optimality of X0
-    grad, normg = optimality(A, problem.C, X, R)
+    grad = 2.0*np.dot(A.T, np.dot(R, problem.C.T))
+    gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
+    normg = sp.norm(gradproj, 'fro')
 
     problem.stats["gradient"] = problem.stats["gradient"] + 1
     if options["full_results"] and solvername == "spg":
@@ -1354,14 +1594,16 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         problem.stats["total_grad"].append(normg)
 
     if options["verbose"] > 1:
-        print("\n          OUTER ITERATION 0:\n")
-        print("             f = {}".format(f))
-        print("             normg = {}".format(normg))
+        print("\n          OUTER ITERATION 0:\n", file=fileobj)
+        print("             f = {}".format(f), file=fileobj)
+        print("             normg = {}".format(normg), file=fileobj)
     elif options["verbose"] == 1:
-        print("  nbiter         f              cost             normg")
-        print("===========================================================")
+        print("  nbiter         f              cost             normg",
+              file=fileobj)
+        print("===========================================================",
+              file=fileobj)
         print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}".
-              format(0, f, f, normg))
+              format(0, f, f, normg), file=fileobj)
 
     # problem.stats["nbiter"] = 0
     outer = 0
@@ -1371,6 +1613,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     flag_inner = True
     ftrial = 0.0
     Xold = X.copy()
+    oldResidual = 0.0
 
     while (normg > options["gtol"]
            and flag_while
@@ -1392,7 +1635,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         # rho is the regularization parameter for the quadratic model
         rho = sigma
         if options["verbose"] > 2:
-            print("             sigma = rho = {}\n".format(sigma))
+            print("             sigma = rho = {}".format(sigma), file=fileobj)
         nbinnerit = 0
 
         W = np.zeros(X.shape)
@@ -1403,9 +1646,10 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
         while flag_inner and trratio < beta1:
 
             if options["verbose"] > 2:
-                print("\n             INNER ITERATION {}:\n".format(nbinnerit))
-                print("             f = {}\n".format(cost[outer]))
-                print("             normg = {}\n".format(normg))
+                print("\n             INNER ITERATION {}:".format(nbinnerit),
+                      file=fileobj)
+                print("             f = {}".format(cost[outer]), file=fileobj)
+                print("             normg = {}".format(normg), file=fileobj)
 
             # Solving the subproblem: Xtrial, the solution to the subproblem,
             # is defined as
@@ -1417,18 +1661,21 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
             W = np.copy(X - (1.0/(rho + sigma))*grad)
 
-            # If X is m-by-n with m > n, then svd(X,0) computes only the first
-            # n columns of U and S is (n,n)
+            if options["polar"] == "ns":
+                Xtrial = polardecomp(W, options)
+            else:
+                # If X is m-by-n with m > n, then svd(X,0) computes only the
+                # first n columns of U and S is (n,n)
 
-            UW, SW, VWT = sp.svd(W, full_matrices=False)
-            # UW, SW, VWT = sp.svd(W)
+                UW, SW, VWT = sp.svd(W, full_matrices=False)
+                # UW, SW, VWT = sp.svd(W)
 
-            # W(smalldim,p)
-            # UW(smalldim,min(smalldim,p))
-            # VWT(min(smalldim,p),p)
+                # W(smalldim,p)
+                # UW(smalldim,min(smalldim,p))
+                # VWT(min(smalldim,p),p)
 
-            Xtrial = np.dot(UW, VWT)
-            problem.stats["svd"] = problem.stats["svd"] + 1
+                Xtrial = np.dot(UW, VWT)
+                problem.stats["svd"] = problem.stats["svd"] + 1
 
             # Computing constraint violation to see if the subproblem
             # solution has been satisfactorily solved
@@ -1437,8 +1684,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
             if constraintviolation >= 1.0e-5:
                 msg = _status_message['infeasible']
-                print('Warning: ' + msg)
-                return
+                raise Exception("Warning: constraint violation = {}"
+                                .format(constraintviolation))
+            #   return -1, f, X, normg, outer, msg
 
             # Rtrial = A*Xtrial*C - B
             Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
@@ -1450,7 +1698,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
             problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
             if options["verbose"] > 2:
-                print("             ftrial = {}\n".format(ftrial))
+                print("             ftrial = {}".format(ftrial), file=fileobj)
 
             ared = f - ftrial
             pred = - np.trace(np.dot(grad.T, (Xtrial-X))
@@ -1458,29 +1706,33 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
 
             if np.abs(pred) < 1.0e-15:
                 msg = _status_message['smallpred']
-                print('Warning: ' + msg)
+                print('Warning: ' + msg, file=fileobj)
                 trratio = 0.0
-                flag_while = False
+                # flag_while = False
             else:
                 trratio = ared/pred
 
             if pred < 0:
                 msg = _status_message['negativepred']
-                print('Warning: ' + msg)
-                flag_while = False
+                print('Warning: ' + msg, file=fileobj)
+                # flag_while = False
                 # trratio = 0.0
 
             if options["verbose"] > 2:
-                print("             ared = {}\n".format(ared))
-                print("             pred = {}\n".format(pred))
-                print("             trratio = {}\n".format(trratio))
+                print("             ared = {}".format(ared), file=fileobj)
+                print("             pred = {}".format(pred), file=fileobj)
+                print("             trratio = {}".format(trratio),
+                      file=fileobj)
 
             if trratio > beta1:
                 flag_inner = False
                 if options["verbose"] > 2:
-                    print("\n             INNER ITERATION FINISHED: success\n")
-                    print("             trratio = {}\n".format(trratio))
-                    print("             beta1 = {}\n".format(beta1))
+                    print("\n             INNER ITERATION FINISHED: success",
+                          file=fileobj)
+                    print("             trratio = {}".format(trratio),
+                          file=fileobj)
+                    print("             beta1 = {}".format(beta1),
+                          file=fileobj)
 
             # Below is equation (15) from (Francisco, Bazan, 2012)
             if flag_inner and flag_while:
@@ -1489,19 +1741,21 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
                     if options["verbose"] > 1:
                         print("             WARNING: Using Lu "
                               " parameter = {} to ensure sufficient decrease "
-                              " (inner {} and outer = {})\n"
-                              .format(Lu, nbinnerit, outer))
+                              " (inner {} and outer = {})"
+                              .format(Lu, nbinnerit, outer), file=fileobj)
+                        options["verbose"] = 3
                     sigma = Lu
 
                 if options["verbose"] > 2:
-                    print("             rho = {}\n".format(rho))
-                    print("             sigma = {}\n".format(sigma))
+                    print("             rho = {}".format(rho), file=fileobj)
+                    print("             sigma = {}"
+                          .format(sigma), file=fileobj)
 
                 nbinnerit = nbinnerit + 1
 
                 if nbinnerit >= options["maxiter"]:
                     msg = _status_message['maxiter']
-                    print('Warning: ' + msg + '(inner loop)')
+                    print('Warning: ' + msg + '(inner loop)', file=fileobj)
                     trratio = 1.0  # just to leave the while
 
         # end while innerit ================================================
@@ -1525,22 +1779,71 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
             qold = quot
             quot = eta*qold + 1.0
             f = (eta*qold*f+ftrial)/quot
+            if options["etavar"]:
+                eta = max(0.75*eta, 0.0)  # starting from eta = 0.9
+                if abs(eta) < 0.1:
+                    eta = 0.0
+                if options["verbose"] > 0:
+                    print("       New eta = {}".format(eta), file=fileobj)
 
-        grad, normg = optimality(A, problem.C, X, R)
+        # Test optimality of X
+        grad = 2.0*np.dot(A.T, np.dot(R, problem.C.T))
+        gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
+        normg = sp.norm(gradproj, 'fro')
+
         problem.stats["gradient"] = problem.stats["gradient"] + 1
         if options["full_results"] and solvername == "spg":
             problem.stats["total_fun"].append(cost[outer+1])
             problem.stats["total_grad"].append(normg)
 
-        if options["verbose"] > 2:
+        # ##################################### BLOBOP
+        if inner:
+            calB = np.zeros((largedim, p))
+            calB[0:p, 0:p] = np.copy(B1)
+            res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
+                          np.dot(A.T, np.dot(A, X) - calB))
+            resBlobop1 = sp.norm(res1, 'fro')
+
+            # Z(p)(k) is the last pxp block of X.
+            Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
+            # blobopprod is an input parameter
+            res2 = np.dot(blobopprod, Zpk)
+            resBlobop2 = sp.norm(res2, "fro")
+
+            newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+            if options["verbose"] > 1:
+                print("       New BLOBOP Residual = {}"
+                      .format(newResidual), file=fileobj)
+                print("       Old BLOBOP Residual = {}"
+                      .format(oldResidual), file=fileobj)
+
+            if options["bloboptest"]:
+                if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
+                    flag_while = False
+                    if options["verbose"] > 1:
+                        print(" Leaving because of blobop.", file=fileobj)
+                else:
+                    oldResidual = newResidual
+            else:
+                oldResidual = newResidual
+
+            # ##################################### BLOBOP
+
+        if options["verbose"] > 1:
             print("\n          OUTER ITERATION {}:\n"
-                  .format(outer+1))
-            print("             f = {}".format(ftrial))
-            print("             normg = {}".format(normg))
+                  .format(outer+1), file=fileobj)
+            print("             f = {}".format(ftrial), file=fileobj)
+            print("             normg = {}".format(normg), file=fileobj)
         elif options["verbose"] == 1:
-            # outer f normg innerits
-            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".
-                  format(outer+1, f, cost[outer+1], normg, nbinnerit))
+            if inner:
+                print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4} {5:>16.4e}"
+                      .format(outer+1, f, cost[outer+1], normg, nbinnerit,
+                              newResidual), file=fileobj)
+            else:
+                # outer f normg innerits
+                print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".
+                      format(outer+1, f, cost[outer+1], normg, nbinnerit),
+                      file=fileobj)
 
         outer = outer+1
         flag_inner = True
@@ -1550,7 +1853,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options):
     if outer >= options["maxiter"]:
         msg = _status_message["maxiter"]
         exitcode = 1
-        print('Warning: ' + msg)
+        print('Warning: ' + msg, file=fileobj)
     else:
         exitcode = 0
         msg = _status_message["innersuccess"]
@@ -1798,15 +2101,49 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
 #     print("\n        A.T*UU(i+1)-VV(i)*T(i).T-V(i+1)*A(i+1)*E(i+1).T = {}\n"
 #           .format(errorRecurrence3))
 
-def optimality(A, C, X, R):
-    # Test optimality of X
-    grad = 2.0*np.dot(A.T, np.dot(R, C.T))
-    gradproj = np.dot(X, (np.dot(X.T, grad)+np.dot(grad.T, X))) - 2.0*grad
-    normg = sp.norm(gradproj, 'fro')
-    return grad, normg
+def polardecomp(W, options):
+
+    if options["polar"] == "ns":
+        # This is the Newton-Schultz iteration
+        #[U, H] = polar_newton_schultz(W, 1e-8)
+        U = polar_newton_schultz(W, 1e-8)
+    else:
+        print("**** POLAR OPTION NOT YET IMPLEMENTED")
+
+    return U
 
 
-def eb_solver(problem, options):
+def polar_newton_schultz(A, tol_cgce):
+    m, n = A.shape
+    if m > n:
+        [Q, R] = sp.qr(A, mode='economic')
+        A = R.copy()
+    elif m < n:
+        raise("Error: m must be greater or equal to n")
+
+    X = A/sp.norm(A, 2)
+    k = 0
+    # deltaold = 10.
+    # delta = 1.
+    normdif = 1.0
+    # main loop
+    while normdif > tol_cgce:  # and delta <= deltaold/2.0
+        Xnew = 1.5*X - 0.5*np.dot(X, np.dot(X.T, X))
+        normdif = sp.norm(Xnew - X, 'fro')
+        # deltaold = delta
+        # delta = sp.norm(Xnew-X, 'fro')/sp.norm(Xnew, 'fro')
+        X = Xnew.copy()
+        k = k + 1
+
+    # U = X.copy()
+    # H1 = np.dot(X.T, A)
+    # H = 0.5*(H1+H1.T)
+    if m > n:
+        X = np.dot(Q, X)
+    return X # , H
+
+
+def eb_solver(problem, options, fileobj):
 
     """
     Expansion-Balance solver
@@ -1863,10 +2200,19 @@ def eb_solver(problem, options):
         problem.stats["total_crit"].append(f)
 
     if options["verbose"] > 0:
-        print("                     EB Solver")
-        print("  nbiter         f             fold-f          tol*fold")
-        print("===========================================================")
-        print(" {0:>4} {1:>16.4e}".format(0, f))
+        print("=========================================", file=fileobj)
+        print("                     EB Solver", fileobj)
+        print("=========================================", file=fileobj)
+        print("Options: {}".format(options), file=fileobj)
+        print("Execution date: {}; {}\n"
+              .format(datetime.datetime.now().date(),
+                      datetime.datetime.now().time()), file=fileobj)
+
+        print("  nbiter         f             fold-f          tol*fold",
+              file=fileobj)
+        print("===========================================================",
+              file=fileobj)
+        print(" {0:>4} {1:>16.4e}".format(0, f), file=fileobj)
 
     criticality = False
     nbiter = 0
@@ -1904,14 +2250,15 @@ def eb_solver(problem, options):
 
         if options["verbose"] > 0:
             print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}"
-                  .format(nbiter, f, fold-f, options["tol"]*fold))
+                  .format(nbiter, f, fold-f, options["tol"]*fold),
+                  file=fileobj)
 
     # ===================================================== end while
 
     if nbiter >= options["maxiter"]:
         msg = _status_message["maxiter"]
         exitcode = 1
-        print('Warning: ' + msg)
+        print('Warning: ' + msg, file=fileobj)
     else:
         exitcode = 0
         msg = _status_message["success"]
@@ -1921,7 +2268,7 @@ def eb_solver(problem, options):
     return X, f, exitcode, msg
 
 
-def gpi_solver(problem, options):
+def gpi_solver(problem, options, fileobj):
 
     """
     Generalized Power Iteration solver
@@ -1968,10 +2315,17 @@ def gpi_solver(problem, options):
         problem.stats["total_crit"].append(f)
 
     if options["verbose"] > 0:
-        print("               GPI Solver ")
+        print("=========================================", file=fileobj)
+        print("                GPI Solver", file=fileobj)
+        print("=========================================", file=fileobj)
+        print("Options: {}".format(options), file=fileobj)
+        print("Execution date: {}; {}\n"
+              .format(datetime.datetime.now().date(),
+                      datetime.datetime.now().time()), file=fileobj)
+
         print("  nbiter         f             fold-f          ")
         print("===================================================")
-        print(" {0:>4} {1:>16.4e}".format(0, f))
+        print(" {0:>4} {1:>16.4e}".format(0, f), file=fileobj)
 
     criticality = False
     nbiter = 0
@@ -2001,14 +2355,15 @@ def gpi_solver(problem, options):
         nbiter = nbiter + 1
 
         if options["verbose"] > 0:
-            print(" {0:>4} {1:>16.4e} {2:>16.4e}".format(nbiter, f, fold-f))
+            print(" {0:>4} {1:>16.4e} {2:>16.4e}".format(nbiter, f, fold-f),
+                  file=fileobj)
 
     # ===================================================== end while
 
     if nbiter >= options["maxiter"]:
         msg = _status_message["maxiter"]
         exitcode = 1
-        print('Warning: ' + msg)
+        print('Warning: ' + msg, file=fileobj)
     else:
         exitcode = 0
         msg = _status_message["success"]
