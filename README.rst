@@ -6,6 +6,8 @@ This is a scikit for the Weighted Orthogonal Procrustes Problem.
 
 .. image:: https://travis-ci.org/melissawm/skprocrustes.svg?branch=master
    :target: https://travis-ci.org/melissawm/skprocrustes
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.1419256.svg
+   :target: https://doi.org/10.5281/zenodo.1419256
 
 Installation from sources
 =========================
