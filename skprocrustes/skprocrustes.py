@@ -2104,7 +2104,8 @@ def polardecomp(W, options):
 
     if options["polar"] == "ns":
         # This is the Newton-Schultz iteration
-        [U, H] = polar_newton_schultz(W, 1e-8)
+        #[U, H] = polar_newton_schultz(W, 1e-8)
+        U = polar_newton_schultz(W, 1e-8)
     else:
         print("**** POLAR OPTION NOT YET IMPLEMENTED")
 
@@ -2134,11 +2135,11 @@ def polar_newton_schultz(A, tol_cgce):
         k = k + 1
 
     # U = X.copy()
-    H1 = np.dot(X.T, A)
-    H = 0.5*(H1+H1.T)
+    # H1 = np.dot(X.T, A)
+    # H = 0.5*(H1+H1.T)
     if m > n:
         X = np.dot(Q, X)
-    return X, H
+    return X # , H
 
 
 def eb_solver(problem, options, fileobj):
