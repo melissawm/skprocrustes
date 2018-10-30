@@ -4,7 +4,8 @@ from numpy.testing import (assert_raises, assert_allclose, assert_equal,
                            assert_array_less)
 from scipy import linalg as sp
 import skprocrustes as skp
-
+import pytest
+import os
 
 # Testing functions inside ProcrustesProblem class:
 class TestSetProblem(TestCase):
@@ -277,7 +278,6 @@ class TestGPISolver(TestCase):
     def test_setoptions_timer(self):
         assert_raises(Exception, skp.GPISolver, timer=3)
 
-
 # Other functions
 class TestSpectralSolver(TestCase):
 
@@ -316,11 +316,25 @@ class TestSpectralSolver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_spg_filename(self):
+    @pytest.fixture(autouse=True)
+    def test_create_file(self, tmpdir):
+        p = tmpdir.mkdir("sub").join("file.txt")
+                
+    def test_spectral_solver_spg_file_exists(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.SPGSolver(verbose=0, filename="testspgfilename.txt")
-        result = mysolver.solve(problem)
-        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+        # criar obrigatoriamente testspgfilename.txt
+        
+        #mysolver = skp.SPGSolver(verbose=1, filename="testspgfilename.txt")
+        #with pytest.raises(OSError):
+        #    result = mysolver.solve(problem)
+        # remover testspgfilename.txt para não atrapalhar outros testes
+        
+    # def test_spectral_solver_spg_file_write(self):
+    #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    #     mysolver = skp.SPGSolver(verbose=1, filename="testspgfilename.txt")
+    #     with pytest.raises(OSError):
+    #         result = mysolver.solve(problem)
+    #     #assert test_path.read() == 'Hello'        
 
     # TODO test below is failing. why?
     ### def test_spectral_solver_spg_changevar(self):
@@ -381,11 +395,11 @@ class TestSpectralSolver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_filename(self):
-        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt")
-        result = mysolver.solve(problem)
-        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+    # def test_spectral_solver_gkb_filename(self):
+    #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    #     mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt")
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
     def test_spectral_solver_gkb_changevar(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
@@ -483,11 +497,11 @@ class TestEB_Solver(TestCase):
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
         assert_allclose(result.fun, 1e-6, atol=1e-2)
 
-    def test_eb_solver_filename(self):
-        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.EBSolver(verbose=0, filename="testebfilename.txt")
-        result = mysolver.solve(problem)
-        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+    # def test_eb_solver_filename(self):
+    #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    #     mysolver = skp.EBSolver(verbose=0, filename="testebfilename.txt")
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
     # EBSolver does not work for problem 3
     # def test_eb_solver_known_solution_problem_3(self):
@@ -539,11 +553,11 @@ class TestGPI_Solver(TestCase):
         assert_allclose(result.solution, problem.Xsol, atol=1e-2)
         #assert_allclose(result.fun, 1e-6, atol=1e-2)
 
-    def test_gpi_solver_filename(self):
-        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GPISolver(verbose=0, filename="testgpifilename.txt")
-        result = mysolver.solve(problem)
-        assert_allclose(result.solution, problem.Xsol, atol=1e-2)
+    # def test_gpi_solver_filename(self):
+    #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    #     mysolver = skp.GPISolver(verbose=0, filename="testgpifilename.txt")
+    #     result = mysolver.solve(problem)
+    #     assert_allclose(result.solution, problem.Xsol, atol=1e-2)
 
     # GPISolver does not solve problem 3
 

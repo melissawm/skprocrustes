@@ -37,6 +37,8 @@ import matplotlib.pyplot as plt
 import sys
 import datetime
 import time
+import os
+import errno
 
 # standard status messages of optimizers (based on scipy.optimize)
 _status_message = {'success': 'Optimization terminated successfully.',
@@ -673,7 +675,19 @@ class SPGSolver(ProcrustesSolver):
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            # The code below ensures that the file is
+            # only opened if it does not already exist
+            # (preventing rewriting of old results files)
+            flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+            try:
+                self.file = os.open(self.options["filename"], flags)
+            except OSError as e:
+                if e.errno == errno.EEXIST: # failed as the file already exists
+                    self.file = sys.stdout
+                    print("File", self.options["filename"], "already exists.")
+                    raise(OSError)
+                else:
+                    raise # Something unexpected went wrong so reraise the exception.         
         else:
             self.file = sys.stdout
 
@@ -993,7 +1007,19 @@ class EBSolver(ProcrustesSolver):
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            # The code below ensures that the file is
+            # only opened if it does not already exist
+            # (preventing rewriting of old results files)
+            flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+            try:
+                self.file = os.open(self.options["filename"], flags)
+            except OSError as e:
+                if e.errno == errno.EEXIST: # failed as the file already exists
+                    self.file = sys.stdout
+                    print("File", self.options["filename"], "already exists.")
+                    raise(OSError)
+                else:
+                    raise # Something unexpected went wrong so reraise the exception.         
         else:
             self.file = sys.stdout
 
@@ -1248,8 +1274,8 @@ def spectral_setup(problem, solvername, options, fileobj):
                           datetime.datetime.now().time()), file=fileobj)
 
         exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
-                                                                X, Ak,
-                                                                Bk, solvername,
+                                                                X, Ak, Bk,
+                                                                solvername,
                                                                 options, inner,
                                                                 fileobj)
 
