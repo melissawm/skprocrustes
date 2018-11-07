@@ -316,18 +316,13 @@ class TestSpectralSolver(TestCase):
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    @pytest.fixture(autouse=True)
-    def test_create_file(self, tmpdir):
-        p = tmpdir.mkdir("sub").join("file.txt")
-                
-    def test_spectral_solver_spg_file_exists(self):
-        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        # criar obrigatoriamente testspgfilename.txt
+    # def test_spectral_solver_spg_file_exists(self):
+    #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+    #     #with pytest.raises(OSError):
+    #     print(tempfile)
+    #     mysolver = skp.SPGSolver(verbose=1, filename=tempfile)
         
-        #mysolver = skp.SPGSolver(verbose=1, filename="testspgfilename.txt")
-        #with pytest.raises(OSError):
         #    result = mysolver.solve(problem)
-        # remover testspgfilename.txt para não atrapalhar outros testes
         
     # def test_spectral_solver_spg_file_write(self):
     #     problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
@@ -560,6 +555,12 @@ class TestGPI_Solver(TestCase):
     #     assert_allclose(result.solution, problem.Xsol, atol=1e-2)
 
     # GPISolver does not solve problem 3
+
+@pytest.fixture(autouse=True)
+def tempfile(tmpdir):
+    tmp_file = tmpdir.join("test.txt")
+    return(str(tmp_file))
+
 
 if __name__ == "__main__":
     run_module_suite()
