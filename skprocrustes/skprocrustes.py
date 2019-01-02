@@ -485,7 +485,9 @@ class SPGSolver(ProcrustesSolver):
           Can take values ``ns`` or ``None``.
        - ``timer``: (*default*: ``False``)
           decide if we are going to time this run.
-
+       - ``precond``: (*default*: ``None``)
+          option to decide if we are going to use preconditioners or not.
+          Can take values ``stupid`` or ``None``.
 
     Output:
 
@@ -617,6 +619,11 @@ class SPGSolver(ProcrustesSolver):
             self.options["timer"] = False
         elif type(self.options["timer"]) != bool:
             raise Exception("timer must be boolean")
+
+        if "precond" not in keys:
+            self.options["precond"] = None
+        elif self.options["precond"] not in (None, "stupid"):
+            raise Exception("precond must be stupid or None")
 
     def solve(self, problem):
 
@@ -1220,18 +1227,20 @@ def spectral_setup(problem, solvername, options, fileobj):
             # Solving this problem is equivalent to solving the original one.
             # THIS IS NOT WORKING. USE CHANGEVAR = FALSE FOR BETTER
             # PERFORMANCE.
-
             U, S, VT = sp.svd(problem.A)
             problem.stats["svd"] = problem.stats["svd"]+1
 
-            # X = np.copy(VT[0:p, 0:n].T)
-            # # Aorig = problem.A.copy()
-            # Ak = np.zeros((m, n))
-            # for i in range(0, min(m, n)):
-            #     Ak[i, i] = S[i]
-            # Bk = np.dot(U.T, problem.B)
-
+            X = np.copy(VT[0:p, 0:n].T)
+            # Aorig = problem.A.copy()
+            Ak = np.zeros((m, n))
+            for i in range(0, min(m, n)):
+                Ak[i, i] = S[i]
+            Bk = np.dot(U.T, problem.B)
+        elif options["precond"] == "stupid":
+            U, S, VT = sp.svd(problem.A)
+            problem.stats["svd"] = problem.stats["svd"]+1
             mu = np.max(S)-np.min(S)
+            options["precond"] = mu
             X = np.zeros((n, p))
             Bk = np.copy(problem.B)/mu
             Ak = np.copy(problem.A)/mu
@@ -1261,11 +1270,16 @@ def spectral_setup(problem, solvername, options, fileobj):
         if options["changevar"]:
             # Going back to the original variable
             Xk = np.dot(VT.T, X)
+        elif options["precond"] is not None:
+            Xk = np.copy(X)
         else:
             Xk = np.copy(X)
 
-        R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
-        residual = sp.norm(R, 'fro')**2
+        # R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
+        # residual = sp.norm(R, 'fro')**2
+
+        R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                       Xk, options["precond"])
 
     elif solvername == "gkb":
 
@@ -1376,15 +1390,14 @@ def spectral_setup(problem, solvername, options, fileobj):
 
             Xk = np.dot(V[0:n, 0:smalldim], Yk)
 
-            R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
-            residual = sp.norm(R, 'fro')**2
+            # R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
+            # residual = sp.norm(R, 'fro')**2
+
+            R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                           Xk, options["precond"])
             residuals.append(residual)
 
-            # Test optimality of X
-            grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-            gradproj = np.dot(Xk, np.dot(Xk.T, grad)+np.dot(grad.T, Xk))
-            - 2.0*grad
-            normgrad = sp.norm(gradproj, 'fro')
+            normgrad, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
 
             if options["verbose"] > 1:
                 print("\n       Gradient norm       = {}"
@@ -1429,15 +1442,15 @@ def spectral_setup(problem, solvername, options, fileobj):
                                                                 inner,
                                                                 fileobj)
         problem.stats["nbiter"] += nbiter
-        R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
-        residual = sp.norm(R, 'fro')**2
 
-        # Test optimality of X
-        grad = 2.0*np.dot(problem.A.T, np.dot(R, problem.C.T))
-        gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
-        normg = sp.norm(gradproj, 'fro')
+        # R = np.dot(problem.A, np.dot(X, problem.C)) - problem.B
+        # residual = sp.norm(R, 'fro')**2
+        R, residual = compute_residual(problem.A, problem.B, problem.C, X,
+                                       1.0)
 
-        if normg < options["gtol"]:
+        normgrad, grad = optimality(problem.A, problem.C, R, X, 1.0)
+
+        if normgrad < options["gtol"]:
             msg = _status_message['success']
 
     if options["verbose"] > 0:
@@ -1565,19 +1578,20 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     # Lu approximates the Lipschitz constant for the gradient of f
     Lu = 2.0*sp.norm(
         np.dot(problem.C, problem.C.T), 'fro')*sp.norm(np.dot(A.T, A), 'fro')
+    if options["precond"] is not None:
+        Lu = options["precond"]*Lu
 
     if options["verbose"] > 2:
         print("\n          Lu = {}".format(Lu), file=fileobj)
 
     # R is the residual, norm(R,fro) is the cost.
-    # R = A*X*C-B
-    R = np.dot(A, np.dot(X, problem.C)) - B
-
-    cost.append(sp.norm(R, 'fro')**2)
+    R, residual = compute_residual(A, B, problem.C, X, options["precond"])
+    cost.append(residual)
 
     # problem.stats["fev"] = problem.stats["fev"] + 1
     problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
 
+    quot = None
     if options["strategy"] == "newfw":
         if options["etavar"]:
             eta = 0.9
@@ -1586,12 +1600,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         quot = 1.0
     f = cost[0]
 
-    # Test optimality of X0
-    grad = 2.0*np.dot(A.T, np.dot(R, problem.C.T))
-    gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
-    normg = sp.norm(gradproj, 'fro')
-
+    normg, grad = optimality(A, problem.C, R, X, options["precond"])
     problem.stats["gradient"] = problem.stats["gradient"] + 1
+
     if options["full_results"] and solvername == "spg":
         problem.stats["total_fun"].append(f)
         problem.stats["total_grad"].append(normg)
@@ -1692,13 +1703,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                 msg = _status_message['infeasible']
                 raise Exception("Warning: constraint violation = {}"
                                 .format(constraintviolation))
-            #   return -1, f, X, normg, outer, msg
 
-            # Rtrial = A*Xtrial*C - B
-            Rtrial = np.dot(A, np.dot(Xtrial, problem.C)) - B
-
-            # ftrial = norm(Rtrial, fro)**2
-            ftrial = sp.norm(Rtrial, 'fro')**2
+            Rtrial, ftrial = compute_residual(A, B, problem.C, Xtrial,
+                                              options["precond"])
 
             # problem.stats["fev"] = problem.stats["fev"]+1
             problem.stats["fev"] = problem.stats["fev"] + (largedim/m)
@@ -1792,17 +1799,16 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                 if options["verbose"] > 0:
                     print("       New eta = {}".format(eta), file=fileobj)
 
-        # Test optimality of X
-        grad = 2.0*np.dot(A.T, np.dot(R, problem.C.T))
-        gradproj = np.dot(X, np.dot(X.T, grad)+np.dot(grad.T, X)) - 2.0*grad
-        normg = sp.norm(gradproj, 'fro')
+        normg, grad = optimality(A, problem.C, R, X, options["precond"])
 
         problem.stats["gradient"] = problem.stats["gradient"] + 1
+
         if options["full_results"] and solvername == "spg":
             problem.stats["total_fun"].append(cost[outer+1])
             problem.stats["total_grad"].append(normg)
 
         # ##################################### BLOBOP
+        newResidual = None
         if inner:
             calB = np.zeros((largedim, p))
             calB[0:p, 0:p] = np.copy(B1)
@@ -2462,3 +2468,33 @@ def compare_solvers(problem, *args, plot=False):
         plt.show()
 
     return results
+
+
+def compute_residual(A, B, C, X, precond):
+
+    """
+    This method computes the residual of the current problem
+    according to our choice of method.
+    """
+
+    R = np.dot(A, np.dot(X, C)) - B
+    if precond is None:
+        residual = sp.norm(R, 'fro')**2
+    else:
+        residual = precond**2*sp.norm(R, 'fro')**2
+
+    return R, residual
+
+def optimality(A, C, R, X, precond):
+
+    """
+    This function computes the norm of the projected gradient
+    at X.
+    """
+    if precond is None:
+        grad = 2.0*np.dot(A.T, np.dot(R, C.T))
+    else:
+        grad = precond*2.0*np.dot(A.T, np.dot(R, C.T))
+    gradproj = np.dot(X, np.dot(X.T, grad) + np.dot(grad.T, X)) - 2.0 * grad
+    normg = sp.norm(gradproj, 'fro')
+    return normg, grad
