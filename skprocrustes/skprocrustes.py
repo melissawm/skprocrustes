@@ -458,7 +458,7 @@ class SPGSolver(ProcrustesSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
-       -  ``eta``: (*default*: ``0.2``)
+       -  ``eta``: (*default*: ``0.85``)
           parameter for the nonmonotone cost computation
        - ``etavar``: (*default*: ``False``)
           decide if we are going to vary the parameter eta
@@ -581,7 +581,7 @@ class SPGSolver(ProcrustesSolver):
             raise Exception("gtol must be a float")
 
         if "eta" not in keys:
-            self.options["eta"] = 0.2
+            self.options["eta"] = 0.85
         elif type(self.options["eta"]) != float:
             raise Exception("eta must be a float")
 
@@ -724,7 +724,7 @@ class GKBSolver(SPGSolver):
              nonmonotone method according to :cite:`FranBazaWebe17`
        - ``gtol``: (*default*: ``1e-3``)
           tolerance for detecting convergence on the gradient
-       -  ``eta``: (*default*: ``0.2``)
+       -  ``eta``: (*default*: ``0.85``)
           parameter for the nonmonotone cost computation
        - ``etavar``: (*default*: ``False``)
           decide if we are going to vary the parameter eta
