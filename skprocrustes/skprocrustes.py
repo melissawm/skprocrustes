@@ -625,6 +625,11 @@ class SPGSolver(ProcrustesSolver):
         elif self.options["precond"] not in (None, "stupid"):
             raise Exception("precond must be stupid or None")
 
+        if "halfreorth" not in keys:
+            self.options["halfreorth"] = False
+        elif self.options["halfreorth"] != bool:
+            raise Exception("halfreorth must be boolean")
+
     def solve(self, problem):
 
         """
@@ -1325,8 +1330,11 @@ def spectral_setup(problem, solvername, options, fileobj):
                 # B1 is a p by p block used in the computation of the new
                 # BLOBOP residual
                 U, V, T, B1, reorth = blockbidiag(problem, U, V, T,
-                                                  nsteps, partial)
+                                                  nsteps, partial,
+                                                  options["halfreorth"])
 
+
+                print("IM HERE")
                 # Akp1 is the last block of T used in the computation
                 # of the BLOBOP residual. (Only for k < maxsteps)
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
@@ -1340,6 +1348,9 @@ def spectral_setup(problem, solvername, options, fileobj):
                 # Since k = maxsteps, we are not going to compute the
                 # blobop (lower) residual inside spectral_solver
                 inner = False
+                # all other values (U, V, T) are already computed in the
+                # (k-1)-th step.
+                
 
             if options["verbose"] > 0:
                 print(" ----> GKB Iteration {}: Tk is {}x{}"
@@ -1347,7 +1358,7 @@ def spectral_setup(problem, solvername, options, fileobj):
 
             # A(m,n) X(n,p) C(p,q) - B(m,q)
 
-            debug = False
+            debug = True
             if debug:
                 # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
                 # print("U = {}\n".format(U[0:m, 0:largedim]))
@@ -1359,7 +1370,8 @@ def spectral_setup(problem, solvername, options, fileobj):
                       file=fileobj)
 
             # Bk(q*(k+1),q) = U(m,q*(k+1))'*B(m,q)
-            Bk = np.dot(U[0:m, 0:largedim].T, problem.B)
+            #Bk = np.dot(U[0:m, 0:largedim].T, problem.B)
+            Bk = np.vstack((B1, np.zeros((largedim-p, p))))
 
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
 
@@ -1878,7 +1890,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     return exitcode, f, X, normg, outer, msg
 
 
-def blockbidiag(problem, U, V, T, steps, partial):
+def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
 
     """
     This function builds block matrices U, V orthogonal such that
@@ -1971,8 +1983,18 @@ def blockbidiag(problem, U, V, T, steps, partial):
         # reorthogonalization if needed to find Uip1 and Bip1 such that
         # Uip1Bip1 = QR(prod)
         Umat = np.copy(U)
-        Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth)
-
+        
+        if not halfreorth:
+            Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth)
+        else:
+            #[Q, R] = sp.qr(np.hstack((Umat[0:m, 0:inds], prod)))
+            #Uip1 = np.hstack((Q[0:m, 0:inds+s], np.zeros((m, m-inds-s))))
+            #Bip1 = R[inds:inds+s, inds:inds+s]
+            #reorth = reorth + inds
+            [Q, R] = sp.qr(prod)
+            Uip1 = np.hstack((U[0:m, 0:inds], Q[0:m, 0:s], np.zeros((m, m-inds-s))))
+            Bip1 = R[0:s, 0:s]
+            
         if debug:
             print("Erro bidiaggs = {}\n"
                   .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
@@ -1989,7 +2011,14 @@ def blockbidiag(problem, U, V, T, steps, partial):
                 - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T))
 
         Vmat = np.copy(V)
-        Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth)
+        if not halfreorth:
+            Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth)
+        else:
+            [Q, R] = sp.qr(np.hstack((Vmat[0:n, 0:inds], prod)))
+            Vip1 = np.hstack((Q[0:n, 0:inds+s], np.zeros((n, n-inds-s))))
+            Aip1 = R[inds:inds+s, inds:inds+s]
+            reorth = reorth + inds
+                                       
         V = np.copy(Vip1)
         T[inds:inds+s, inds:inds+s] = np.copy(Aip1.T)
 
@@ -1997,7 +2026,8 @@ def blockbidiag(problem, U, V, T, steps, partial):
         # if debug and problem.options["verbose"] > 1:
         #    debug_bidiag(i, s, inds, problem.A, problem.B, U, V, T)
 
-    if debug and problem.options["verbose"] > 1:
+    debug = False
+    if debug:
         print("\n        MaxError: max(T-U'*A*V) = {}\n"
               .format(np.max(T[0:m, 0:n] - np.dot(U.T, np.dot(problem.A, V)))))
         print("\n        max(V'*V - I) = {}\n"
