@@ -41,6 +41,7 @@ import time
 # standard status messages of optimizers (based on scipy.optimize)
 _status_message = {'success': 'Optimization terminated successfully.',
                    'innersuccess': 'Inner iteration successful.',
+                   'exact': 'Exact solution found for the first GKB block.',
                    'infeasible': 'Infeasible point found.',
                    'stalled': 'No further progress can be made.',
                    'smallpred': 'Small PRED',
@@ -627,7 +628,7 @@ class SPGSolver(ProcrustesSolver):
 
         if "halfreorth" not in keys:
             self.options["halfreorth"] = False
-        elif self.options["halfreorth"] != bool:
+        elif type(self.options["halfreorth"]) != bool:
             raise Exception("halfreorth must be boolean")
 
     def solve(self, problem):
@@ -1334,7 +1335,6 @@ def spectral_setup(problem, solvername, options, fileobj):
                                                   options["halfreorth"])
 
 
-                print("IM HERE")
                 # Akp1 is the last block of T used in the computation
                 # of the BLOBOP residual. (Only for k < maxsteps)
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
@@ -1374,27 +1374,29 @@ def spectral_setup(problem, solvername, options, fileobj):
             Bk = np.vstack((B1, np.zeros((largedim-p, p))))
 
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
-
-            # if k == 1:
-            X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
-            # else:
-            #    X[0:q*(k-1),0:p] = result from last run
-            #    X = np.zeros((smalldim, p))
-            #    X[0:q*(k-1), 0:p] = np.copy(Yk
-            #    X[q*(k-1):smalldim, 0:p] = np.zeros((smalldim-q*(k-1), p))
-
             Tk = T[0:largedim, 0:smalldim]
-            if k < maxsteps:
-                Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
-                # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
-                #                     np.dot(Akp1, Bkp1))
-                blobopprod = np.dot(Akp1, Bkp1)
 
-            exitcode, f, Yk, normgradlower, outer, msg \
-                = spectral_solver(problem, largedim, smalldim,
-                                  X[0:smalldim, 0:p], Tk,
-                                  Bk[0:largedim, 0:q], solvername,
-                                  options, inner, fileobj, B1, blobopprod)
+            if k == 1:
+                PR = np.dot(Tk.T, Bk)
+                [UX, SX, VXh] = sp.svd(PR)
+                Yk = np.dot(UX, VXh)
+                exitcode = 0
+                normgradlower = 0
+                outer = 0
+                msg = _status_message['exact']
+            else:
+                X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
+                if k < maxsteps:
+                    Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
+                    # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
+                    #                     np.dot(Akp1, Bkp1))
+                    blobopprod = np.dot(Akp1, Bkp1)
+
+                exitcode, f, Yk, normgradlower, outer, msg \
+                    = spectral_solver(problem, largedim, smalldim,
+                                      X[0:smalldim, 0:p], Tk,
+                                      Bk[0:largedim, 0:q], solvername,
+                                      options, inner, fileobj, B1, blobopprod)
 
             # TODO: add counter for inner iterations
             problem.stats["nbiter"] = (problem.stats["nbiter"] +
@@ -1407,6 +1409,9 @@ def spectral_setup(problem, solvername, options, fileobj):
 
             R, residual = compute_residual(problem.A, problem.B, problem.C,
                                            Xk, options["precond"])
+            if k == 1:
+                f = residual
+                
             residuals.append(residual)
 
             normgrad, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
@@ -1985,13 +1990,14 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
         Umat = np.copy(U)
         
         if not halfreorth:
-            Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth)
+            Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, False)
         else:
             #[Q, R] = sp.qr(np.hstack((Umat[0:m, 0:inds], prod)))
             #Uip1 = np.hstack((Q[0:m, 0:inds+s], np.zeros((m, m-inds-s))))
             #Bip1 = R[inds:inds+s, inds:inds+s]
             #reorth = reorth + inds
-            [Q, R] = sp.qr(prod)
+            #[Q, R] = sp.qr(prod)
+            Q, R, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
             Uip1 = np.hstack((U[0:m, 0:inds], Q[0:m, 0:s], np.zeros((m, m-inds-s))))
             Bip1 = R[0:s, 0:s]
             
@@ -2011,13 +2017,13 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
                 - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T))
 
         Vmat = np.copy(V)
-        if not halfreorth:
-            Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth)
-        else:
-            [Q, R] = sp.qr(np.hstack((Vmat[0:n, 0:inds], prod)))
-            Vip1 = np.hstack((Q[0:n, 0:inds+s], np.zeros((n, n-inds-s))))
-            Aip1 = R[inds:inds+s, inds:inds+s]
-            reorth = reorth + inds
+        #if not halfreorth:
+        Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth, False)
+        #else:
+        #    [Q, R] = sp.qr(np.hstack((Vmat[0:n, 0:inds], prod)))
+        #    Vip1 = np.hstack((Q[0:n, 0:inds+s], np.zeros((n, n-inds-s))))
+        #    Aip1 = R[inds:inds+s, inds:inds+s]
+        #    reorth = reorth + inds
                                        
         V = np.copy(Vip1)
         T[inds:inds+s, inds:inds+s] = np.copy(Aip1.T)
@@ -2039,7 +2045,7 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
     return U, V, T, B1, reorth
 
 
-def bidiaggs(inds, prod, mat, gstol, reorth):
+def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
 
     """ Computing one block of blockbidiag at a time:
     this routine computes the QR decomposition of A using
@@ -2056,8 +2062,6 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
     # However, we need the complete mat here because we will
     # reorthogonalize, when necessary, against all columns of Umat.
 
-    # Now, we will reorthogonalize each column k of prod with respect to all
-    # previous columns
     for k in range(0, s):
         # k is the current column
         indspk = inds+k
@@ -2086,7 +2090,16 @@ def bidiaggs(inds, prod, mat, gstol, reorth):
         # A{i+1}[k, k] = sp.norm(prod[0:n,k])
         R[k, k] = sp.norm(A[:, k])
 
-        if abs(R[k, k]) < gstol:
+        if abs(R[k, k]) < gstol and halfreorth:
+            # U_{i+1}(:,k) = UU_{i+1}(:,k)/B_{i+1}(k,k)
+            # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
+            for j in range(0, A.shape[0]):
+                A[j, k] = np.random.randn(1)
+            # Reorthogonalize against all computed elements
+            temp = np.diag(np.dot(A[:, k].T, mat[:, inds:indspk]))
+            A[:, k] = A[:, k] - np.sum(np.dot(mat[:, inds:indspk], temp), axis=1)
+            mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
+        elif abs(R[k,k]) < gstol and not halfreorth:
             reorth = reorth + 1
             # TODO CHECK THIS
             # Trying out not using random numbers when
