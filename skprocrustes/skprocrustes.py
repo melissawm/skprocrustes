@@ -789,10 +789,10 @@ class GKBSolver(SPGSolver):
 
         self.open_file()
         t0 = time.time()
-        X, fval, normgrad, exitcode, msg = spectral_setup(problem,
-                                                          self.solvername,
-                                                          self.options,
-                                                          self.file)
+        X, fval, opt, exitcode, msg = spectral_setup(problem,
+                                                     self.solvername,
+                                                     self.options,
+                                                     self.file)
         cpu = time.time()-t0
         self.close_file()
 
@@ -819,7 +819,7 @@ class GKBSolver(SPGSolver):
                                 message=msg,
                                 solution=X,
                                 fun=fval,
-                                normgrad=normgrad,
+                                opt=opt,
                                 error=error,
                                 cpu=cpu,
                                 nbiter=problem.stats["nbiter"],
@@ -1286,6 +1286,7 @@ def spectral_setup(problem, solvername, options, fileobj):
 
         R, residual = compute_residual(problem.A, problem.B, problem.C,
                                        Xk, options["precond"])
+        opt = normgrad
 
     elif solvername == "gkb":
 
@@ -1300,12 +1301,20 @@ def spectral_setup(problem, solvername, options, fileobj):
                           datetime.datetime.now().time()), file=fileobj)
 
         residuals = []
+        # auxiliaries for blobop
+        oldResidual = 0
+        newResidual = np.Inf
+        opt = newResidual
+
         # Setting up number of steps allowed in block Lanczos mode
         maxsteps = m/q
 
+        # auxiliary matrix
+        Zp = np.zeros((p,p))
+        
         # k = current Lanczos block
         k = 1
-        while k <= maxsteps and normgrad > options["gtol"]:
+        while k <= maxsteps and opt > options["gtol"]:
 
             # T = Ak is the partial bidiagonalization of A
             # [U,Ak,V] = bidiag3_block(A,B,q,steps);
@@ -1358,7 +1367,7 @@ def spectral_setup(problem, solvername, options, fileobj):
 
             # A(m,n) X(n,p) C(p,q) - B(m,q)
 
-            debug = True
+            debug = False
             if debug:
                 # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
                 # print("U = {}\n".format(U[0:m, 0:largedim]))
@@ -1377,51 +1386,73 @@ def spectral_setup(problem, solvername, options, fileobj):
             Tk = T[0:largedim, 0:smalldim]
 
             if k == 1:
-                PR = np.dot(Tk.T, Bk)
-                [UX, SX, VXh] = sp.svd(PR)
-                Yk = np.dot(UX, VXh)
+                [UX, SX, VXh] = sp.svd(np.dot(Tk.T, Bk))
+                Yk = np.dot(UX, VXh)  # solk
+                intx0 = np.copy(Yk)
                 exitcode = 0
                 normgradlower = 0
                 outer = 0
                 msg = _status_message['exact']
             else:
-                X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
+                
+                #X[0:smalldim, 0:p] = np.copy(V[0:smalldim, 0:p])
+
+                X[0:smalldim, 0:p] = np.vstack((intx0,Zp))
+                
                 if k < maxsteps:
                     Bkp1 = T[largedim-p:largedim, smalldim-p:smalldim]
                     # blobopprod = np.dot(V[0:n, smalldim:smalldim+p],
                     #                     np.dot(Akp1, Bkp1))
                     blobopprod = np.dot(Akp1, Bkp1)
+                else:
+                    blobopprod = 0
 
                 exitcode, f, Yk, normgradlower, outer, msg \
                     = spectral_solver(problem, largedim, smalldim,
                                       X[0:smalldim, 0:p], Tk,
                                       Bk[0:largedim, 0:q], solvername,
                                       options, inner, fileobj, B1, blobopprod)
+                if normgradlower <= 1e-2:
+                    intx0 = np.copy(Yk)
+                else:
+                    intx0 = np.vstack((intx0, Zp))
 
             # TODO: add counter for inner iterations
             problem.stats["nbiter"] = (problem.stats["nbiter"] +
                                        (largedim/m)*outer)
 
-            Xk = np.dot(V[0:n, 0:smalldim], Yk)
 
-            # R = np.dot(problem.A, np.dot(Xk, problem.C)) - problem.B
-            # residual = sp.norm(R, 'fro')**2
-
-            R, residual = compute_residual(problem.A, problem.B, problem.C,
-                                           Xk, options["precond"])
-            if k == 1:
-                f = residual
-                
-            residuals.append(residual)
-
-            normgrad, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
-
-            if options["verbose"] > 1:
-                print("\n       Gradient norm       = {}"
-                      .format(normgrad), file=fileobj)
-                print("       Residual norm       = {}\n"
-                      .format(residual), file=fileobj)
-
+            #Xk = np.dot(V[0:n, 0:smalldim], Yk)
+            #R, residual = compute_residual(problem.A, problem.B, problem.C,
+            #                               Xk, options["precond"])
+            #residuals.append(residual)
+            #normgrad, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
+            #if options["verbose"] > 1:
+            #    print("\n       Gradient norm       = {}"
+            #          .format(normgrad), file=fileobj)
+            #    print("       Residual norm       = {}\n"
+            #          .format(residual), file=fileobj)
+            # ##################################### BLOBOP
+            if k > 1 and k < maxsteps:
+                newResidual = None
+                # TODO check what does inner mean and if we can get rid of it
+                if inner:
+                    calB = np.zeros((largedim, p))
+                    calB[0:p, 0:p] = np.copy(B1)
+                    resBlobop1 = normgradlower
+                    # Z(p)(k) is the last pxp block of X.
+                    Zpk = np.copy(Yk[smalldim-p:smalldim, 0:p])
+                    res2 = np.dot(blobopprod, Zpk)
+                    resBlobop2 = sp.norm(res2, "fro")
+                    
+                    newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+                    if options["verbose"] > 1:
+                        print("       Old BLOBOP Residual = {}"
+                              .format(oldResidual), file=fileobj)
+                        print("       New BLOBOP Residual = {}"
+                              .format(newResidual), file=fileobj)
+                    oldResidual = newResidual
+                    opt = newResidual
             # ##################################### BLOBOP
             # if k < maxsteps:
             #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
@@ -1435,16 +1466,22 @@ def spectral_setup(problem, solvername, options, fileobj):
 
         # end while
 
+        Xk = np.dot(V[0:n, 0:smalldim], Yk)
+
         problem.stats["blocksteps"] = k-1
 
     else:
         # STILL TO BE DEVELOPED.
         print("\nWRONG SOLVER!\n")
 
-    if normgrad <= options["gtol"]:
+    #if normgrad <= options["gtol"]:
+    #if newResidual <= options["gtol"]:
+    if opt <= options["gtol"]:
         msg = _status_message['success']
     else:
-        msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
+        #msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
+        #msg = _status_message['stalled']+" newResidual: {}".format(newResidual)
+        msg = _status_message['stalled']+" opt: {}".format(opt)
         if options["verbose"] > 0:
             print(msg, file=fileobj)
             print("                Using SPG Solver:", file=fileobj)
@@ -1466,14 +1503,14 @@ def spectral_setup(problem, solvername, options, fileobj):
                                        1.0)
 
         normgrad, grad = optimality(problem.A, problem.C, R, X, 1.0)
-
+        opt = normgrad
         if normgrad < options["gtol"]:
             msg = _status_message['success']
 
     if options["verbose"] > 0:
         print(msg, file=fileobj)
 
-    return Xk, f, normgrad, exitcode, msg
+    return Xk, f, opt, exitcode, msg
 
 
 def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
@@ -1647,7 +1684,6 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     oldResidual = 0.0
     Xtrial = None
     Rtrial = None
-    blobopresidual = 0.0
 
     while (normg > options["gtol"]
            and flag_while
@@ -1825,38 +1861,37 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             problem.stats["total_grad"].append(normg)
 
         # ##################################### BLOBOP
-        newResidual = None
-        if inner:
-            calB = np.zeros((largedim, p))
-            calB[0:p, 0:p] = np.copy(B1)
-            res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
-                          np.dot(A.T, np.dot(A, X) - calB))
-            resBlobop1 = sp.norm(res1, 'fro')
+        # newResidual = None
+        # if inner:
+        #     calB = np.zeros((largedim, p))
+        #     calB[0:p, 0:p] = np.copy(B1)
+        #     res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
+        #                   np.dot(A.T, np.dot(A, X) - calB))
+        #     resBlobop1 = sp.norm(res1, 'fro')
 
-            # Z(p)(k) is the last pxp block of X.
-            Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
-            # blobopprod is an input parameter
-            res2 = np.dot(blobopprod, Zpk)
-            resBlobop2 = sp.norm(res2, "fro")
+        #     # Z(p)(k) is the last pxp block of X.
+        #     Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
+        #     # blobopprod is an input parameter
+        #     res2 = np.dot(blobopprod, Zpk)
+        #     resBlobop2 = sp.norm(res2, "fro")
 
-            newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
-            if options["verbose"] > 1:
-                print("       New BLOBOP Residual = {}"
-                      .format(newResidual), file=fileobj)
-                print("       Old BLOBOP Residual = {}"
-                      .format(oldResidual), file=fileobj)
+        #     newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+        #     if options["verbose"] > 1:
+        #         print("       New BLOBOP Residual = {}"
+        #               .format(newResidual), file=fileobj)
+        #         print("       Old BLOBOP Residual = {}"
+        #               .format(oldResidual), file=fileobj)
 
-            if options["bloboptest"]:
-                if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
-                    flag_while = False
-                    if options["verbose"] > 1:
-                        print(" Leaving because of blobop.", file=fileobj)
-                else:
-                    oldResidual = newResidual
-            else:
-                oldResidual = newResidual
-
-            # ##################################### BLOBOP
+        #     if options["bloboptest"]:
+        #         if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
+        #             flag_while = False
+        #             if options["verbose"] > 1:
+        #                 print(" Leaving because of blobop.", file=fileobj)
+        #         else:
+        #             oldResidual = newResidual
+        #     else:
+        #         oldResidual = newResidual
+        # ##################################### BLOBOP
 
         if options["verbose"] > 1:
             print("\n          OUTER ITERATION {}:\n"

@@ -394,6 +394,8 @@ class TestSpectralSolver(TestCase):
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
     def test_spectral_solver_gkb_changevar(self):
+        # this test makes no sense?
+        # TODO fix this
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
         mysolver = skp.GKBSolver(verbose=0, changevar=True)
         result = mysolver.solve(problem)
@@ -438,8 +440,9 @@ class TestBlockBidiag(TestCase):
 
         problem = skp.ProcrustesProblem((m, n, p, q), matrices=(A, B, C))
 
+        halfreorth = False
         U, V, T, B1, reorth = skp.blockbidiag(problem, U, V, T, nsteps,
-                                              partial)
+                                              partial, halfreorth)
 
         # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
         # print("U = {}\n".format(U[0:m, 0:largedim]))
@@ -457,9 +460,11 @@ class TestBidiagGs(TestCase):
 
         A = np.array([[0, 0, 3], [1, 3, 4], [0, 2, 1]])
         Q2 = np.eye(3, 3)
-        Q2, R2, reorth = skp.bidiaggs(0, A, Q2, 1e-10, 0)
+        Q2, R2, reorth = skp.bidiaggs(0, A, Q2, 1e-10, 0, False)
         erro_bidiag = sp.norm(np.dot(Q2, R2) - A)
         assert_allclose(erro_bidiag, 0)
+
+    # test bidiaggs with halfreorth
 
 
 class TestEB_Solver(TestCase):
