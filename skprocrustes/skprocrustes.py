@@ -1348,9 +1348,6 @@ def spectral_setup(problem, solvername, options, fileobj):
                 # of the BLOBOP residual. (Only for k < maxsteps)
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
 
-
-                print(sp.norm(Akp1))
-                
                 if options["verbose"] > 2:
                     print("\n       Finished bidiag: Reorth: {}\n"
                           .format(reorth), file=fileobj)
@@ -1389,10 +1386,10 @@ def spectral_setup(problem, solvername, options, fileobj):
             Tk = T[0:largedim, 0:smalldim]
 
             ###
-            print("k = {}; Tk is {}x{}".format(k, largedim, smalldim))
-            for indice in range(0, int(maxsteps)):
-                print("Block ({}:{}, {}:{}".format(p*indice+0, p*indice+2*p, p*indice+0, p*indice+p))
-                print(Tk[p*indice+0:p*indice+2*p, p*indice+0:p*indice+p]) 
+            #print("k = {}; Tk is {}x{}".format(k, largedim, smalldim))
+            #for indice in range(0, int(maxsteps)):
+            #    print("Block ({}:{}, {}:{}".format(p*indice+0, p*indice+2*p, p*indice+0, p*indice+p))
+            #    print(Tk[p*indice+0:p*indice+2*p, p*indice+0:p*indice+p]) 
             
             if k == 1:
                 [UX, SX, VXh] = sp.svd(np.dot(Tk.T, Bk))
@@ -1952,7 +1949,7 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
     # The current Lanczos step goes from (partial+1)*s:steps*s
 
     # Tolerance for reorthogonalization
-    gstol = 1.0e-8
+    gstol = 1.0e-10
 
     debug = False
     # steps = min(m,n)/s-1
@@ -2034,21 +2031,44 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
         Umat = np.copy(U)
         
         if not halfreorth:
+            # [Q, R] = sp.qr(np.hstack((U[0:m, 0:inds], prod)))
+            # Uip1 = np.copy(Q)
+            # Bip1 = R[inds:inds+s, inds:inds+s]
+            # debug = True
+            # if debug:
+            #     print("Erro bidiaggs = {}\n"
+            #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
+            #                          - prod)))
             Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, False)
         else:
-            #[Q, R] = sp.qr(np.hstack((Umat[0:m, 0:inds], prod)))
-            #Uip1 = np.hstack((Q[0:m, 0:inds+s], np.zeros((m, m-inds-s))))
-            #Bip1 = R[inds:inds+s, inds:inds+s]
             #reorth = reorth + inds
-            #[Q, R] = sp.qr(prod)
-            Q, R, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
-            Uip1 = np.hstack((U[0:m, 0:inds], Q[0:m, 0:s], np.zeros((m, m-inds-s))))
-            Bip1 = R[0:s, 0:s]
-            
-        if debug:
-            print("Erro bidiaggs = {}\n"
-                  .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
-                                  - prod)))
+            [Q1, R1] = sp.qr(prod)
+            Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
+            Bip1 = R1[0:s, 0:s]
+            debug = False
+            if debug:
+                print("\nErro bidiaggs QR = {}"
+                      .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
+
+            # TODO try to fix this 
+            # Q2, R2, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
+            # Uip1 = np.hstack((U[0:m, 0:inds], Q2[0:m, inds:inds+s], np.zeros((m,m-inds-s))))
+            # Bip1 = R2[0:s, 0:s]
+            # debug = True
+            # if debug:
+            #     print(Q1)
+            #     print(Q2)
+            #     print(np.abs(Q1[0:m, 0:s]) - np.abs(Q2[0:m, inds:inds+s]))
+            #     print(sp.norm(np.abs(Q1[0:m, 0:s]) - np.abs(Q2[0:m, inds:inds+s])))
+            #     print("Erro bidiaggs = {}\n"
+            #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
+            #                           - prod)))
+
+        # debug = True
+        # if debug:
+        #     print("Erro bidiaggs = {}\n"
+        #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
+        #                           - prod)))
 
         # Now, the blocks go into U and T.
         U = np.copy(Uip1)
@@ -2132,37 +2152,44 @@ def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
 
         # B{i+1}(k, k) = norm(prod[0:m, k])
         # A{i+1}[k, k] = sp.norm(prod[0:n,k])
-        R[k, k] = sp.norm(A[:, k])
+        #R[k, k] = sp.norm(A[:, k])
 
-        if abs(R[k, k]) < gstol and halfreorth:
+        #if abs(R[k, k]) < gstol and halfreorth:
+        if halfreorth:
             # U_{i+1}(:,k) = UU_{i+1}(:,k)/B_{i+1}(k,k)
             # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
-            for j in range(0, A.shape[0]):
-                A[j, k] = np.random.randn(1)
+            #for j in range(0, A.shape[0]):
+            #    A[j, k] = np.random.randn(1)
+            
             # Reorthogonalize against recently computed elements
             temp = np.diag(np.dot(A[:, k].T, mat[:, inds:indspk]))
             A[:, k] = A[:, k] - np.sum(np.dot(mat[:, inds:indspk], temp), axis=1)
+            #for j in range(inds, indspk):
+            #    A[:, k] = A[:, k] - np.dot(A[:, k], mat[:, j]) * mat[:, j]
             mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
-        elif abs(R[k,k]) < gstol and not halfreorth:
+            
+        #elif abs(R[k,k]) < gstol and not halfreorth:
+        else:
             reorth = reorth + 1
             # TODO CHECK THIS
             # Trying out not using random numbers when
             # reorthogonalizing to keep results controlled
             # A[:,k] = np.zeros((A.shape[0],))
             # A[k,k] = 1.0
-            for j in range(0, A.shape[0]):
-                A[j, k] = np.random.randn(1)
+            #for j in range(0, A.shape[0]):
+            #    A[j, k] = np.random.randn(1)
 
             # Reorthogonalize against all computed elements
             temp = np.diag(np.dot(A[:, k].T, mat[:, 0:indspk]))
             A[:, k] = A[:, k] - np.sum(np.dot(mat[:, 0:indspk], temp), axis=1)
 
             mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
-        else:
+        #else:
             # U_{i+1}(:,k) = UU_{i+1}(:,k)/B_{i+1}(k,k)
             # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
-            mat[:, indspk] = A[:, k] / R[k, k]
+            #mat[:, indspk] = A[:, k] / R[k, k]
 
+        R[k,k] = sp.norm(A[:, k])
         for j in range(k + 1, s):
             # B_{i+1}(k,j) = U_{i+1}(:,k)'*UU_{i+1}(:,j)
             # A_{i+1}(k,j) = V_{i+1}(:,k)'*VV_{i+1}(:,j)
