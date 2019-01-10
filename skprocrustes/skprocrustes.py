@@ -1265,7 +1265,7 @@ def spectral_setup(problem, solvername, options, fileobj):
                   .format(datetime.datetime.now().date(),
                           datetime.datetime.now().time()), file=fileobj)
 
-        exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
+        exitcode, f, X, normg, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 X, Ak,
                                                                 Bk, solvername,
                                                                 options, inner,
@@ -1286,7 +1286,7 @@ def spectral_setup(problem, solvername, options, fileobj):
 
         R, residual = compute_residual(problem.A, problem.B, problem.C,
                                        Xk, options["precond"])
-        opt = normgrad
+        opt = normg
 
     elif solvername == "gkb":
 
@@ -1348,6 +1348,9 @@ def spectral_setup(problem, solvername, options, fileobj):
                 # of the BLOBOP residual. (Only for k < maxsteps)
                 Akp1 = T[largedim-q:largedim, smalldim:smalldim+q].T
 
+
+                print(sp.norm(Akp1))
+                
                 if options["verbose"] > 2:
                     print("\n       Finished bidiag: Reorth: {}\n"
                           .format(reorth), file=fileobj)
@@ -1385,6 +1388,12 @@ def spectral_setup(problem, solvername, options, fileobj):
             # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
             Tk = T[0:largedim, 0:smalldim]
 
+            ###
+            print("k = {}; Tk is {}x{}".format(k, largedim, smalldim))
+            for indice in range(0, int(maxsteps)):
+                print("Block ({}:{}, {}:{}".format(p*indice+0, p*indice+2*p, p*indice+0, p*indice+p))
+                print(Tk[p*indice+0:p*indice+2*p, p*indice+0:p*indice+p]) 
+            
             if k == 1:
                 [UX, SX, VXh] = sp.svd(np.dot(Tk.T, Bk))
                 Yk = np.dot(UX, VXh)  # solk
@@ -1407,7 +1416,7 @@ def spectral_setup(problem, solvername, options, fileobj):
                 else:
                     blobopprod = 0
 
-                exitcode, f, Yk, normgradlower, outer, msg \
+                exitcode, f, Yk, normg, normgradlower, outer, msg \
                     = spectral_solver(problem, largedim, smalldim,
                                       X[0:smalldim, 0:p], Tk,
                                       Bk[0:largedim, 0:q], solvername,
@@ -1488,7 +1497,7 @@ def spectral_setup(problem, solvername, options, fileobj):
 
         inner = False
 
-        exitcode, f, X, normgrad, nbiter, msg = spectral_solver(problem, m, n,
+        exitcode, f, X, normg, normgrad, nbiter, msg = spectral_solver(problem, m, n,
                                                                 Xk, problem.A,
                                                                 problem.B,
                                                                 "spg",
@@ -1502,7 +1511,7 @@ def spectral_setup(problem, solvername, options, fileobj):
         R, residual = compute_residual(problem.A, problem.B, problem.C, X,
                                        1.0)
 
-        normgrad, grad = optimality(problem.A, problem.C, R, X, 1.0)
+        normgradproj, normgrad, grad = optimality(problem.A, problem.C, R, X, 1.0)
         opt = normgrad
         if normgrad < options["gtol"]:
             msg = _status_message['success']
@@ -1654,7 +1663,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         quot = 1.0
     f = cost[0]
 
-    normg, grad = optimality(A, problem.C, R, X, options["precond"])
+    normg, normgrad, grad = optimality(A, problem.C, R, X, options["precond"])
     problem.stats["gradient"] = problem.stats["gradient"] + 1
 
     if options["full_results"] and solvername == "spg":
@@ -1852,7 +1861,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
                 if options["verbose"] > 0:
                     print("       New eta = {}".format(eta), file=fileobj)
 
-        normg, grad = optimality(A, problem.C, R, X, options["precond"])
+        normg, normgrad, grad = optimality(A, problem.C, R, X, options["precond"])
 
         problem.stats["gradient"] = problem.stats["gradient"] + 1
 
@@ -1927,7 +1936,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
 
     f = cost[outer]
 
-    return exitcode, f, X, normg, outer, msg
+    return exitcode, f, X, normg, normgrad, outer, msg
 
 
 def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
@@ -2130,7 +2139,7 @@ def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
             # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
             for j in range(0, A.shape[0]):
                 A[j, k] = np.random.randn(1)
-            # Reorthogonalize against all computed elements
+            # Reorthogonalize against recently computed elements
             temp = np.diag(np.dot(A[:, k].T, mat[:, inds:indspk]))
             A[:, k] = A[:, k] - np.sum(np.dot(mat[:, inds:indspk], temp), axis=1)
             mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
@@ -2573,6 +2582,7 @@ def optimality(A, C, R, X, precond):
         grad = 2.0*np.dot(A.T, np.dot(R, C.T))
     else:
         grad = precond*2.0*np.dot(A.T, np.dot(R, C.T))
+    normgrad = sp.norm(grad, 'fro')
     gradproj = np.dot(X, np.dot(X.T, grad) + np.dot(grad.T, X)) - 2.0 * grad
     normg = sp.norm(gradproj, 'fro')
-    return normg, grad
+    return normg, normgrad, grad
