@@ -18,6 +18,7 @@ Available Solvers
 * ``GKBSolver``    Nonmonotone Spectral Projected Gradient Method using incomplete Lanczos (Golub-Kahan) Bidiagonalization, as described in :cite:`FranBazaWebe17`.
 * ``EBSolver``     Expansion-Balance method, as described in :cite:`BergKnol84`.
 * ``GPISolver``    Generalized Power Iteration for the WOPP, as described in :cite:`NieZhanLi17`.
+* ``GBBSolver``    Curvilinear search method, as described in :cite: `WenYin13` and available at `github <https://github.com/wenstone/OptM>`_.
      
 Usage
 =====

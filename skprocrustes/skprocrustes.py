@@ -1188,7 +1188,187 @@ class GPISolver(ProcrustesSolver):
         if self.options["filename"] is not None:
             self.file.close()
 
+class GBBSolver(ProcrustesSolver):
 
+    """
+    Subclass containing the call to the ``gbb_solver()`` function
+    corresponding to the curvilinear search method as described in
+    :cite:`WenYin13`.
+
+    Usage example:
+
+       >>> mysolver = skp.GBBSolver(verbose=3)
+       >>> result = mysolver.solve(problem)
+
+    Input:
+
+    ``key = value``: keyword arguments available
+       - ``full_results``: (*default*: ``False``)
+          Return list of criticality values at each iteration (for later
+          comparison between solvers)
+       - ``tol``: (*default*: ``1e-6``)
+          tolerance for detecting convergence
+       - ``maxiter``: (*default*: ``5000``)
+          maximum number of iterations allowed
+       - ``verbose``: (*default*: ``1``)
+          verbosity level. Current options:
+          - ``0``: only convergence info
+          - ``1``: only show time and final stats
+       - ``filename``: (*default*: None)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
+
+    Output:
+
+    ``solver``: ``ProcrustesSolver`` instance
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self._setoptions(options=kwargs)
+        self.solvername = "gbb"
+
+    def solve(self, problem):
+
+        """
+        Effectively solve the problem using the Curvilinear Search method.
+
+        Input:
+
+          ``problem``: ``ProcrustesProblem`` instance
+
+        Output:
+
+          ``result``: ``OptimizationResult`` instance
+        """
+
+        self.open_file()
+        t0 = time.time()
+        X, fval, exitcode, msg = gbb_solver(problem, self.options, self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
+
+        if self.options["full_results"]:
+            if "total_fun" not in problem.stats.keys() or \
+               "total_crit" not in problem.stats.keys():
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_crit\"]")
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_crit = problem.stats["total_crit"]
+        else:
+            total_fun = np.inf
+            total_crit = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                total_fun=total_fun,
+                                total_crit=total_crit)
+
+        return result
+
+    def _setoptions(self, options):
+
+        """
+        Sets and validates options for the GBBSolver.
+
+        *This method should not be called directly; it is called by the
+        GBBSolver constructor.*
+        """
+
+        # Options for the solver.
+        # The user has the option of not calling this method explicitly,
+        # in which case default options are used.
+
+        # Keys available:
+        #
+        # - full_results: return list of criticality values at each iteration
+        #
+        # - tol: tolerance for detecting convergence
+        #
+        # - maxiter: maximum number of iterations allowed
+        #
+        # - verbose: verbosity level
+        #            0: only convergence info
+        #            1: only show time and final stats
+        #            2: show outer iterations
+        #            3: everything (except debug which is set separately)
+        #
+        # - filename: Decides if we are going to output print statements to
+        #             stdout or to a file called ``filename``
+        # - timer: decide if we are going to time this run.
+
+        # TODO in the future, if we allow non square problems
+        # ALSO enable this is tests.
+        # if solver == "gbb":
+        #     # Check if dimensions match.
+        #     m,n,p,q = problem.sizes
+        #     if m != n or p!=q:
+        #         raise Exception("Cannot use rectangular matrices with GBB.")
+        #     if sp.norm(problem.C-np.eye(p,p), 'inf') > 1e-16:
+        #         raise Exception("Error! GBB method can only be used if "
+        #                         "problem.C is eye(p,p).")
+
+        super()._setoptions()
+        self.options = options
+        keys = self.options.keys()
+
+        if "full_results" not in keys:
+            self.options["full_results"] = False
+        elif type(self.options["full_results"]) != bool:
+            raise Exception("full_results must be a boolean")
+
+        if "tol" not in keys:
+            self.options["tol"] = 1e-6
+        elif type(self.options["tol"]) != float:
+            raise Exception("tol must be a float")
+
+        if "maxiter" not in keys:
+            self.options["maxiter"] = 5000
+        elif type(self.options["maxiter"]) != int:
+            raise Exception("maxiter must be an integer")
+
+        if "verbose" not in keys:
+            self.options["verbose"] = 1
+        elif self.options["verbose"] not in (0, 1):
+            raise Exception("verbose must be 0, or 1")
+
+        if "filename" not in keys:
+            self.options["filename"] = None
+        elif type(self.options["filename"]) != str:
+            raise Exception("filename must be string")
+
+        if "timer" not in keys:
+            self.options["timer"] = False
+        elif type(self.options["timer"]) != bool:
+            raise Exception("timer must be boolean")
+
+    def open_file(self):
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
+
+    def close_file(self):
+        if self.options["filename"] is not None:
+            self.file.close()
+
+            
 def spectral_setup(problem, solvername, options, fileobj):
 
     """
@@ -2042,20 +2222,20 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
             Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, False)
         else:
             #reorth = reorth + inds
-            [Q1, R1] = sp.qr(prod)
-            Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
-            Bip1 = R1[0:s, 0:s]
-            debug = False
-            if debug:
-                print("\nErro bidiaggs QR = {}"
-                      .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
+            #[Q1, R1] = sp.qr(prod)
+            #Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
+            #Bip1 = R1[0:s, 0:s]
+            #debug = True
+            #if debug:
+            #    print("\nErro bidiaggs QR = {}"
+            #          .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
 
-            # TODO try to fix this 
-            # Q2, R2, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
-            # Uip1 = np.hstack((U[0:m, 0:inds], Q2[0:m, inds:inds+s], np.zeros((m,m-inds-s))))
-            # Bip1 = R2[0:s, 0:s]
-            # debug = True
-            # if debug:
+            # TODO try to make this faster? 
+            Q2, R2, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
+            Uip1 = np.hstack((U[0:m, 0:inds], Q2[0:m, inds:inds+s], np.zeros((m,m-inds-s))))
+            Bip1 = R2[0:s, 0:s]
+            #debug = True
+            #if debug:
             #     print(Q1)
             #     print(Q2)
             #     print(np.abs(Q1[0:m, 0:s]) - np.abs(Q2[0:m, inds:inds+s]))
@@ -2498,6 +2678,130 @@ def gpi_solver(problem, options, fileobj):
 
     # Sometimes, X assumes some imaginary garbage values.
     return X.real, f, exitcode, msg
+
+def gbb_solver(problem, options, fileobj):
+
+    """
+    Curvilinear search solver
+
+    Here we consider always :math:`m=n`, :math:`p=q`, :math:`C=I`.
+    Thus the problem has to be
+
+       .. math::
+
+          \\min \\lVert A_{n\\times n}X_{n\\times p}-B_{n\\times p}\\rVert_F^2
+          \\qquad s.t. X^TX=I_{p\\times p}
+
+    References: :cite:`WenYin13`.
+    """
+
+    problem.stats["nbiter"] = 0
+    problem.stats["fev"] = 0
+    problem.stats["svd"] = 0
+    if options["full_results"]:
+        problem.stats["total_fun"] = []
+        problem.stats["total_crit"] = []
+
+    m, n, p, q = problem.sizes
+    exitcode = 0
+    msg = ''
+
+    # Initialization (X = G)
+    # From [1], p. 973:
+    # "The initial guess G(0) can be a solution to the balance problem
+    # min norm(AG-[B, Bhat], 'fro') s. t. G'*G=I
+    # with an expansion [B, Bhat] of B. In ref. [BergKnol84], Bhat was simply
+    # set to be zero or a randomly chosen matrix. A better initial guess
+    # Bhat = AE
+    # was suggested in ref. [ZhanDu06] with E the eigenvector matrix of A.T*A
+    # corresponding to its n-k smallest eigenvalues."
+
+    # G(n,n) = [X(n,p), H(n,n-p)]
+
+    Bhat = np.zeros((n, n-p))
+
+    B = np.concatenate((problem.B, Bhat), axis=1)
+
+    # Find the SVD of A.T*B = USV.T, and define G(0) = U*V.T
+    U, S, VT = sp.svd(np.dot(problem.A.T, B))
+    problem.stats["svd"] = problem.stats["svd"] + 1
+    G = np.dot(U, VT)
+    # X = np.copy(G[0:n, 0:p])
+    X = np.zeros((n, p))
+
+    f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
+    problem.stats["fev"] = problem.stats["fev"] + 1
+    if options["full_results"]:
+        problem.stats["total_fun"].append(f)
+        problem.stats["total_crit"].append(f)
+
+    if options["verbose"] > 0:
+        print("=========================================", file=fileobj)
+        print("                     EB Solver", fileobj)
+        print("=========================================", file=fileobj)
+        print("Options: {}".format(options), file=fileobj)
+        print("Execution date: {}; {}\n"
+              .format(datetime.datetime.now().date(),
+                      datetime.datetime.now().time()), file=fileobj)
+
+        print("  nbiter         f             fold-f          tol*fold",
+              file=fileobj)
+        print("===========================================================",
+              file=fileobj)
+        print(" {0:>4} {1:>16.4e}".format(0, f), file=fileobj)
+
+    criticality = False
+    nbiter = 0
+    while not criticality and nbiter < options["maxiter"]:
+
+        # Solve the expansion problem
+        # min norm(AG-[B, AH], 'fro') s.t. G'G=I
+        # by finding the svd of A.T[B, AH].
+        H = G[0:n, p:n]
+        AH = np.dot(problem.A, H)
+        B = np.concatenate((problem.B, AH), axis=1)
+
+        # Find the SVD of A.T*B = USV.T, and define G = U*V.T
+        U, S, VT = sp.svd(np.dot(problem.A.T, B))
+        problem.stats["svd"] = problem.stats["svd"]+1
+        G = np.dot(U, VT)
+        X = np.copy(G[0:n, 0:p])
+        # X = 0*G[0:n, 0:p]
+
+        fold = f
+        f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
+        problem.stats["fev"] = problem.stats["fev"]+1
+
+        # Check for convergence
+        criticality = (np.abs(fold - f) < options["tol"]*fold) or \
+                      (np.abs(f) < options["tol"])
+
+        if options["full_results"]:
+            problem.stats["total_fun"].append(f)
+            problem.stats["total_crit"].append(min(np.abs(fold-f)/np.abs(fold),
+                                                   np.abs(fold)))
+
+        # Print and loop back
+        nbiter = nbiter + 1
+
+        if options["verbose"] > 0:
+            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}"
+                  .format(nbiter, f, fold-f, options["tol"]*fold),
+                  file=fileobj)
+
+    # ===================================================== end while
+
+    if nbiter >= options["maxiter"]:
+        msg = _status_message["maxiter"]
+        exitcode = 1
+        print('Warning: ' + msg, file=fileobj)
+    else:
+        exitcode = 0
+        msg = _status_message["success"]
+
+    problem.stats["nbiter"] = nbiter
+
+    return X, f, exitcode, msg
 
 
 def compare_solvers(problem, *args, plot=False):
