@@ -22,6 +22,7 @@
 #                Procrustes problem before full matrix is used.
 #   > EBSolver : expansion-balance method
 #   > GPISolver: Generalized Power Iteration method for WOPP
+#   > GBBSolver: Curvilinear search method for WOPP
 #
 # All solvers listed above extend ProcrustesSolver, which is the base
 # solver class. In adition, GKBSolver also extends SPGSolver.
@@ -1206,8 +1207,27 @@ class GBBSolver(ProcrustesSolver):
        - ``full_results``: (*default*: ``False``)
           Return list of criticality values at each iteration (for later
           comparison between solvers)
-       - ``tol``: (*default*: ``1e-6``)
-          tolerance for detecting convergence
+       - ``xtol``: (*default*: ``1e-6``)
+          Tolerance for ||X_k - X_{k-1}||
+       - ``gtol``: (*default*: ``1e-6``)
+          Tolerance for the projected gradient
+       - ``ftol``: (*default*: ``1e-12``)
+          Tolerance for |F_k - F_{k-1}|/(1+|F_{k-1}|). Usually, 
+          max{xtol, gtol} > ftol
+       - ``zeta``: (*default*: ``1e-4``)
+          Parameter for the linear approximation in line search
+       - ``kappa``: (*default*: ``0.1``)
+          Factor for decreasing step size in backtracking line search
+       -  ``eta``: (*default*: ``0.85``)
+          parameter for the nonmonotone cost computation
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
+       - ``tau``: (*default*: ``1e-3``)
+          Crank-Nicholson update parameter
+       - ``projected_gradient``: (*default*: ``1``)
+          Choice of computation of projected gradient 
+          TODO expand this comment
        - ``maxiter``: (*default*: ``5000``)
           maximum number of iterations allowed
        - ``verbose``: (*default*: ``1``)
@@ -1299,7 +1319,26 @@ class GBBSolver(ProcrustesSolver):
         #
         # - full_results: return list of criticality values at each iteration
         #
-        # - tol: tolerance for detecting convergence
+        # - xtol: tolerance for ||X_k - X_{k-1}||
+        #
+        # - gtol: tolerance for the projected gradient
+        #
+        # - ftol: tolerance for |F_k - F_{k-1}|/(1+|F_{k-1}|)
+        #         usually, max{xtol, gtol} > ftol
+        #
+        # - zeta: parameter for the linear approximation in line search
+        #
+        # - kappa: factor for decreasing step size in backtracking line search
+        #
+        # - eta: parameter for the nonmonotone cost computation
+        #
+        # - etavar: decide if we are going to vary the parameter eta
+        #           for the nonmonotone cost computation
+        #
+        # - tau: Crank-Nicholson update parameter
+        #
+        # - projected_gradient: choice of computation of projected gradient 
+        #                       TODO expand this comment
         #
         # - maxiter: maximum number of iterations allowed
         #
@@ -1333,11 +1372,51 @@ class GBBSolver(ProcrustesSolver):
         elif type(self.options["full_results"]) != bool:
             raise Exception("full_results must be a boolean")
 
-        if "tol" not in keys:
-            self.options["tol"] = 1e-6
-        elif type(self.options["tol"]) != float:
-            raise Exception("tol must be a float")
+        if "xtol" not in keys:
+            self.options["xtol"] = 1e-6
+        elif type(self.options["xtol"]) != float:
+            raise Exception("xtol must be a float")
 
+        if "gtol" not in keys:
+            self.options["gtol"] = 1e-6
+        elif type(self.options["gtol"]) != float:
+            raise Exception("gtol must be a float")
+
+        if "ftol" not in keys:
+            self.options["ftol"] = 1e-12
+        elif type(self.options["ftol"]) != float:
+            raise Exception("ftol must be a float")
+
+        if "zeta" not in keys:
+            self.options["zeta"] = 1e-4
+        elif type(self.options["zeta"]) != float:
+            raise Exception("zeta must be a float")
+
+        if "kappa" not in keys:
+            self.options["kappa"] = 0.1
+        elif type(self.options["kappa"]) != float:
+            raise Exception("kappa must be a float")
+
+        if "eta" not in keys:
+            self.options["eta"] = 0.85
+        elif type(self.options["eta"]) != float:
+            raise Exception("eta must be a float")
+
+        if "etavar" not in keys:
+            self.options["etavar"] = False
+        elif type(self.options["etavar"]) != bool:
+            raise Exception("etavar must be a boolean")
+
+        if "tau" not in keys:
+            self.options["tau"] = 1e-3
+        elif type(self.options["tau"]) != float:
+            raise Exception("tau must be a float")
+
+        if "projected_gradient" not in keys:
+            self.options["projected_gradient"] = 1
+        elif self.options["projected_gradient"] not in (1, 2):
+            raise Exception("projected_gradient must be 1 or 2")
+        
         if "maxiter" not in keys:
             self.options["maxiter"] = 5000
         elif type(self.options["maxiter"]) != int:
@@ -1572,6 +1651,7 @@ def spectral_setup(problem, solvername, options, fileobj):
             #    print(Tk[p*indice+0:p*indice+2*p, p*indice+0:p*indice+p]) 
             
             if k == 1:
+                # In the smaller case, we find the exact solution for this GKB iteration.
                 [UX, SX, VXh] = sp.svd(np.dot(Tk.T, Bk))
                 Yk = np.dot(UX, VXh)  # solk
                 intx0 = np.copy(Yk)
@@ -1593,6 +1673,13 @@ def spectral_setup(problem, solvername, options, fileobj):
                 else:
                     blobopprod = 0
 
+                # Should we keep this? FOR GBB
+                # if nrx >= 1e-2:
+                #     opts.gtol = 1e-3
+                # else:
+                #     opts.gtol = 1e-6
+
+                    
                 exitcode, f, Yk, normg, normgradlower, outer, msg \
                     = spectral_solver(problem, largedim, smalldim,
                                       X[0:smalldim, 0:p], Tk,
@@ -2682,113 +2769,270 @@ def gpi_solver(problem, options, fileobj):
 def gbb_solver(problem, options, fileobj):
 
     """
-    Curvilinear search solver
-
-    Here we consider always :math:`m=n`, :math:`p=q`, :math:`C=I`.
-    Thus the problem has to be
+    Curvilinear search solver for problems of the type
 
        .. math::
 
-          \\min \\lVert A_{n\\times n}X_{n\\times p}-B_{n\\times p}\\rVert_F^2
-          \\qquad s.t. X^TX=I_{p\\times p}
+          \\min \\lVert AXC - B\\rVert_F^2  \\qquad s.t. X^TX = I
 
     References: :cite:`WenYin13`.
     """
 
+    # Original implementation: OptStiefelGBB.m, by Zaiwen Wen, Wotao Yin
+    # (Version 1.0, 2010/10)
+
+    # Original documentation:
+    # min F(X), S.t., X'*X = I_k, where X \in R^{n,k}
+    # 
+    # H = [G, X]*[X -G]'
+    # U = 0.5*tau*[G, X];    V = [X -G]
+    # X(tau) = X - 2*U * inv( I + V'*U ) * V'*X
+    #  -------------------------------------
+    # U = -[G,X];  V = [X -G];  VU = V'*U;
+    # X(tau) = X - tau*U * inv( I + 0.5*tau*VU ) * V'*X
+    # -------------------------------------
+
+    # OBS. Since in our case X is always real, we do not consider the complex case here.
+    # OBS 2. The code below has been removed
+    # parameters for the  nonmontone line search by Raydan
+    # if ~isfield(opts, 'STPEPS')
+    #     opts.STPEPS = 1e-10;
+    # end
+
     problem.stats["nbiter"] = 0
     problem.stats["fev"] = 0
-    problem.stats["svd"] = 0
+    problem.stats["grad"] = 0
+    problem.stats["linear_solver"] = 0
     if options["full_results"]:
         problem.stats["total_fun"] = []
-        problem.stats["total_crit"] = []
+        problem.stats["total_grad"] = []
 
     m, n, p, q = problem.sizes
     exitcode = 0
     msg = ''
+    cost = []
 
-    # Initialization (X = G)
-    # From [1], p. 973:
-    # "The initial guess G(0) can be a solution to the balance problem
-    # min norm(AG-[B, Bhat], 'fro') s. t. G'*G=I
-    # with an expansion [B, Bhat] of B. In ref. [BergKnol84], Bhat was simply
-    # set to be zero or a randomly chosen matrix. A better initial guess
-    # Bhat = AE
-    # was suggested in ref. [ZhanDu06] with E the eigenvector matrix of A.T*A
-    # corresponding to its n-k smallest eigenvalues."
+    tau = options["tau"]
+    xtol = options["xtol"]
+    ftol = options["ftol"]
+    gtol = options["gtol"]
+    
+    # memory is the number of iterations we will use to compute
+    # the cost value from the last iterations in the nonmonotone case
+    memory = 5
+    
+    #crit = [(1,1,1) for i in range(0,memory)]
+    crit = []
 
-    # G(n,n) = [X(n,p), H(n,n-p)]
+    invH = True
+    if p < n/2:
+        invH = False
+        eye2p = np.eye(2*p, 2*p)
 
-    Bhat = np.zeros((n, n-p))
+    X0 = np.random.rand(n,p)
+    [X, temp] = sp.qr(X0, mode='economic', overwrite_a=True)
 
-    B = np.concatenate((problem.B, Bhat), axis=1)
-
-    # Find the SVD of A.T*B = USV.T, and define G(0) = U*V.T
-    U, S, VT = sp.svd(np.dot(problem.A.T, B))
-    problem.stats["svd"] = problem.stats["svd"] + 1
-    G = np.dot(U, VT)
-    # X = np.copy(G[0:n, 0:p])
-    X = np.zeros((n, p))
-
-    f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
+    R, residual = compute_residual(problem.A, problem.B, problem.C, X, None)
+    cost.append(residual)
+    
     problem.stats["fev"] = problem.stats["fev"] + 1
     if options["full_results"]:
-        problem.stats["total_fun"].append(f)
-        problem.stats["total_crit"].append(f)
+        problem.stats["total_fun"].append(cost[0])
 
+    normgradproj, normGrad, G = optimality(problem.A, problem.C, R, X, None)
+    
+    GX = np.dot(G.T, X)
+    dtX = G - np.dot(X, GX)
+    # TODO check this later
+    normG = sp.norm(dtX, 'fro');
+
+    problem.stats["grad"] = problem.stats["grad"] + 1
+    if options["full_results"]:
+        problem.stats["total_grad"].append(normG)
+
+    if invH:
+        GXT = np.dot(G, X.T)
+        H = 0.5*(GXT - GXT.T)
+        RX = np.dot(H, X)
+    else:
+        if options["projected_gradient"] == 1:
+            U = np.hstack((G, X))
+            V = np.hstack((X, -G))
+            VU = np.dot(V.T, U)
+        elif options["projected_gradient"] == 2:
+            GB = G - 0.5*np.dot(X, np.dot(X.T, G))
+            U = np.hstack((GB, X))
+            V = np.hstack((X, -GB))
+            VU = np.dot(V.T, U)
+
+        # U =  [G, X];    VU = [GX', X'*X; -(G'*G), -GX];   
+        # VX = VU(:,p+1:end); %VX = V'*X;
+        VX = np.dot(V.T, X)
+
+    # Computing nonmonotone cost function
+    quot = 1.0
+    if options["etavar"]:
+        eta = 0.9
+    else:
+        eta = options["eta"]
+    f = cost[0]
+    
     if options["verbose"] > 0:
         print("=========================================", file=fileobj)
-        print("                     EB Solver", fileobj)
+        print("                     GBB Solver", fileobj)
         print("=========================================", file=fileobj)
         print("Options: {}".format(options), file=fileobj)
         print("Execution date: {}; {}\n"
               .format(datetime.datetime.now().date(),
                       datetime.datetime.now().time()), file=fileobj)
 
-        print("  nbiter         f             fold-f          tol*fold",
+        print("  nbiter         f             fold-f             tau            normG",
               file=fileobj)
-        print("===========================================================",
+        print("=========================================================================",
               file=fileobj)
-        print(" {0:>4} {1:>16.4e}".format(0, f), file=fileobj)
+        print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>16.4e}".format(0, f, 0, tau, normG), file=fileobj)
 
+    # Main iteration
     criticality = False
     nbiter = 0
     while not criticality and nbiter < options["maxiter"]:
 
-        # Solve the expansion problem
-        # min norm(AG-[B, AH], 'fro') s.t. G'G=I
-        # by finding the svd of A.T[B, AH].
-        H = G[0:n, p:n]
-        AH = np.dot(problem.A, H)
-        B = np.concatenate((problem.B, AH), axis=1)
+        XP = np.copy(X)
+        GP = np.copy(G)
+        dtXP = np.copy(dtX)
 
-        # Find the SVD of A.T*B = USV.T, and define G = U*V.T
-        U, S, VT = sp.svd(np.dot(problem.A.T, B))
-        problem.stats["svd"] = problem.stats["svd"]+1
-        G = np.dot(U, VT)
-        X = np.copy(G[0:n, 0:p])
-        # X = 0*G[0:n, 0:p]
+        # scale step size
+        nbiter_ls = 1
+        deriv = options["zeta"]*normG**2  # deriv
+        while True:
+            if invH:
+                X = sp.solve(np.eye(n,n) + tau*H, XP - tau*RX)
+            else:
+                aa = sp.solve(eye2p + (0.5*tau)*VU, VX)
+                X = XP - np.dot(U, tau*aa)
 
-        fold = f
-        f = sp.norm(np.dot(problem.A, X) - problem.B, 'fro')**2
-        problem.stats["fev"] = problem.stats["fev"]+1
+            # if norm(X'*X - eye(p),'fro') > 1e-6; error('X^T*X~=I'); end
+        
+            R, residual = compute_residual(problem.A, problem.B, problem.C, X, None)
+            cost.append(residual)
+    
+            problem.stats["fev"] = problem.stats["fev"] + 1
+            if options["full_results"]:
+                problem.stats["total_fun"].append(cost[nbiter+1])
+        
+            if cost[nbiter+1] <= f - tau*deriv or nbiter_ls >= 5:
+                break
+            tau = options["kappa"]*tau
+            nbiter_ls = nbiter_ls+1
+        # end while
 
-        # Check for convergence
-        criticality = (np.abs(fold - f) < options["tol"]*fold) or \
-                      (np.abs(f) < options["tol"])
-
+        normgradproj, normGrad, G = optimality(problem.A, problem.C, R, X, None)
+            
+        GX = np.dot(G.T, X)
+        dtX = G - np.dot(X, GX)
+        # TODO check this later
+        normG = sp.norm(dtX, 'fro');
+        
+        problem.stats["grad"] = problem.stats["grad"] + 1
         if options["full_results"]:
-            problem.stats["total_fun"].append(f)
-            problem.stats["total_crit"].append(min(np.abs(fold-f)/np.abs(fold),
-                                                   np.abs(fold)))
+            problem.stats["total_grad"].append(normG)
+            
+        GX = np.dot(G.T, X)
+        if invH:
+            GXT = np.dot(G, X.T)
+            H = 0.5*(GXT - GXT.T)
+            RX = np.dot(H, X)
+        else:
+            if options["projected_gradient"] == 1:
+                U = np.hstack((G, X))
+                V = np.hstack((X, -G))
+                VU = np.dot(V.T, U)
+            elif options["projected_gradient"] == 2:
+                GB = G - 0.5*np.dot(X, np.dot(X.T, G))
+                U = np.hstack((GB, X))
+                V = np.hstack((X, -GB))
+                VU = np.dot(V.T, U)
+            # U =  [G, X];    VU = [GX', X'*X; -(G'*G), -GX];
+            # VX = VU(:,p+1:end); % VX = V'*X;
+            VX = np.dot(V.T, X)
+
+        dtX = G - np.dot(X, GX)
+        normG  = sp.norm(dtX, 'fro') 
+        #%[nbiter normG]
+        
+        step = X - XP;
+        XDiff = sp.norm(step,'fro')/np.sqrt(n)
+
+        tau = options["tau"]
+        FDiff = np.abs(cost[nbiter]-cost[nbiter+1])/(np.abs(cost[nbiter])+1);
+
+        # Y = G - GP;     SY = abs(sum(sum(step.*Y)));
+
+        Y = dtX - dtXP
+        SY = np.abs(np.sum(np.sum(np.multiply(step, Y))))
+        
+        # alpha = sum(sum(step.*step))/SY;
+        # alpha = SY/sum(sum(Y.*Y));
+        # alpha = max([sum(sum(step.*step))/SY, SY/sum(sum(Y.*Y))]);
+        if nbiter%2==0:
+            tau = np.sum(np.sum(np.multiply(step, step)))/SY
+        else:
+            tau  = SY/np.sum(np.sum(np.multiply(Y,Y))) 
+       
+        # Y = G - GP;
+        # Y = dtX - dtXP;
+        # YX = Y'*X;     SX = step'*X;
+        # SY =  abs(sum(sum(step.*Y)) - 0.5*sum(sum(YX.*SX)) );
+        # if mod(nbiter,2)==0;
+        #    tau = SY/(sum(sum(step.*step))- 0.5*sum(sum(SX.*SX)));
+        # else
+        #    tau = (sum(sum(Y.*Y)) -0.5*sum(sum(YX.*YX)))/SY;
+        # end
+
+        tau = max(min(tau, 1e20), 1e-20)
+        if options["verbose"] > 1:
+            print("       New tau = {}".format(tau), file=fileobj)
+
+        # TODO update to only store the last (memory) values
+        crit.append((normG, XDiff, FDiff))
+        # mcrit is a row vector containing the mean along each column (axis=0)
+        mcrit = np.mean(crit[nbiter-min(memory,nbiter):nbiter+1], axis=0)
+        
+        # if (XDiff < xtol && normG < gtol ) || FDiff < ftol
+        # if (XDiff < xtol || normG < gtol ) || FDiff < ftol
+        # if ( XDiff < xtol && FDiff < ftol ) || normG < gtol 
+        # if ( XDiff < xtol || FDiff < ftol ) || normG < gtol     
+
+        if ( XDiff < xtol and FDiff < ftol ) or \
+           normG < gtol or np.all(mcrit[1:] < np.asarray([10*xtol, 10*ftol])):
+            if nbiter <= 2:
+                ftol = 0.1*ftol
+                xtol = 0.1*xtol
+                gtol = 0.1*gtol
+            else:
+                #exitcode = 0
+                #msg = _status_message["success"]
+                break
+        
+        #Qp = Q; Q = eta*Qp + 1; Cval = (eta*Qp*Cval + F)/Q;
+        qold = quot
+        quot = eta*qold + 1.0
+        f = (eta*qold*cost[nbiter]+cost[nbiter+1])/quot
+        if options["etavar"]:
+            eta = max(0.75*eta, 0.0)  # starting from eta = 0.9
+            if abs(eta) < 0.1:
+                eta = 0.0
+            if options["verbose"] > 1:
+                print("       New eta = {}".format(eta), file=fileobj)
+
+        # problem.stats["total_crit"].append(min(np.abs(fold-f)/np.abs(fold),
+        #                                        np.abs(fold)))
 
         # Print and loop back
-        nbiter = nbiter + 1
-
         if options["verbose"] > 0:
-            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e}"
-                  .format(nbiter, f, fold-f, options["tol"]*fold),
-                  file=fileobj)
+            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>16.4e}".format(nbiter+1, f, cost[nbiter]-f, tau, normG), file=fileobj)
 
+        nbiter = nbiter + 1
     # ===================================================== end while
 
     if nbiter >= options["maxiter"]:
@@ -2801,7 +3045,19 @@ def gbb_solver(problem, options, fileobj):
 
     problem.stats["nbiter"] = nbiter
 
+    # out.feasi = norm(X'*X-eye(p),'fro');
+    # %if  out.feasi > 1e-13
+    # %    X = MGramSchmidt(X);
+    # %    [F,G] = feval(fun, X, varargin{:});
+    # %    out.nfe = out.nfe + 1;
+    # %    out.feasi = norm(X'*X-eye(p),'fro');
+    # %end
+    
     return X, f, exitcode, msg
+
+
+# function [X, out]= OptStiefelGBB(X, fun, opts, varargin)
+
 
 
 def compare_solvers(problem, *args, plot=False):
@@ -2915,5 +3171,5 @@ def optimality(A, C, R, X, precond):
         grad = precond*2.0*np.dot(A.T, np.dot(R, C.T))
     normgrad = sp.norm(grad, 'fro')
     gradproj = np.dot(X, np.dot(X.T, grad) + np.dot(grad.T, X)) - 2.0 * grad
-    normg = sp.norm(gradproj, 'fro')
-    return normg, normgrad, grad
+    normgradproj = sp.norm(gradproj, 'fro')
+    return normgradproj, normgrad, grad
