@@ -433,7 +433,7 @@ class ProcrustesSolver:
 
 class SPGSolver(ProcrustesSolver):
     """
-    Subclass containing the call to the ``gkb_setup()`` function
+    Subclass containing the call to the ``spectral_solver()`` function
     corresponding to the Spectral Projected Gradient solver described in
     :cite:`FranBaza12` and :cite:`FranBazaWebe17`.
 
@@ -476,13 +476,9 @@ class SPGSolver(ProcrustesSolver):
        - ``changevar``: (*default*: ``False``)
           boolean option to allow for a change of variables before starting the
           method. Currently disabled due to bad performance.
-       - ``bloboptest``: (*default*: ``False``)
-          boolean option to test the computation of a new residual at lower
-          GKB levels to decide if we are going to iterate at this level or
-          give up and add a new block to the bidiagonalization.
        - ``polar``: (*default*: ``None``)
           option to decide if we are going to compute the solution of the
-          GKB subproblem via an SVD decomposition or via iterative methods
+          SPG subproblem via an SVD decomposition or via iterative methods
           to compute the polar decomposition.
           Can take values ``ns`` or ``None``.
        - ``timer``: (*default*: ``False``)
@@ -513,6 +509,264 @@ class SPGSolver(ProcrustesSolver):
         # Options for the solver.
         # The user should not call this method explicitly, but pass the desired
         # options as arguments when instantiating a SPGSolver object. If no
+        # options are selected by the user, default options are used.
+
+        # Keys available:
+        #
+        # - full_results: return list of criticality values at each iteration
+        #
+        # - filename: Decides if we are going to output print statements to
+        #             stdout or to a file called filename
+        #
+        # - strategy:
+        #   > "monotone": monotone trust region
+        #   > "bazfr"   : nonmonotone method according to [1]
+        #   > "newfw"   : nonmonotone method according to [2]
+        #
+        # - gtol: tolerance for detecting convergence on the gradient
+        #
+        # - eta: parameter for the nonmonotone cost computation
+        #
+        # - etavar: decide if we are going to vary the parameter eta
+        #           for the nonmonotone cost computation
+        #
+        # - maxiter: maximum number of iterations allowed
+        #
+        # - verbose: verbosity level
+        #            0: only convergence info
+        #            1: only show time and final stats
+        #            2: show outer iterations
+        #            3: everything (except debug which is set separately)
+        # - changevar: boolean option to allow for a change of variables
+        #              before starting the method. Currently disabled
+        #              due to bad performance
+        # - polar: option to decide if we are going to compute the solution of
+        #          the GKB subproblem via an SVD decomposition or via iterative
+        #          methods to compute the polar decomposition.
+        #          Can take values ``ns`` or ``None``.
+        # - timer: decide if we are going to time this run.
+        #
+        # - precond: option to decide if we are going to use
+        #            preconditioners or not. Can take values ``stupid``
+        #            or ``None``.
+
+        super()._setoptions()
+        self.options = options
+        keys = self.options.keys()
+
+        if "full_results" not in keys:
+            self.options["full_results"] = False
+        elif type(self.options["full_results"]) != bool:
+            raise Exception("full_results must be a boolean")
+
+        if "filename" not in keys:
+            self.options["filename"] = None
+        elif type(self.options["filename"]) != str:
+            raise Exception("filename must be a string")
+
+        if "strategy" not in keys:
+            self.options["strategy"] = "newfw"
+        elif self.options["strategy"] not in ("monotone", "bazfr", "newfw"):
+            raise Exception("strategy not implemented")
+
+        if "gtol" not in keys:
+            self.options["gtol"] = 1e-3
+        elif type(self.options["gtol"]) != float:
+            raise Exception("gtol must be a float")
+
+        if "eta" not in keys:
+            self.options["eta"] = 0.85
+        elif type(self.options["eta"]) != float:
+            raise Exception("eta must be a float")
+
+        if "etavar" not in keys:
+            self.options["etavar"] = False
+        elif type(self.options["etavar"]) != bool:
+            raise Exception("etavar must be a boolean")
+
+        if "maxiter" not in keys:
+            self.options["maxiter"] = 5000
+        elif type(self.options["maxiter"]) != int:
+            raise Exception("maxiter must be an integer")
+
+        if "verbose" not in keys:
+            self.options["verbose"] = 1
+        elif self.options["verbose"] not in (0, 1, 2, 3):
+            raise Exception("verbose must be 0, 1, 2 or 3")
+
+        if "changevar" not in keys:
+            self.options["changevar"] = False
+        elif type(self.options["changevar"]) != bool:
+            raise Exception("changevar must be True or False")
+
+        if "polar" not in keys:
+            self.options["polar"] = None
+        elif self.options["polar"] not in (None, "ns"):
+            raise Exception("polar must be ns or None")
+
+        if "timer" not in keys:
+            self.options["timer"] = False
+        elif type(self.options["timer"]) != bool:
+            raise Exception("timer must be boolean")
+
+        if "precond" not in keys:
+            self.options["precond"] = None
+        elif self.options["precond"] not in (None, "stupid"):
+            raise Exception("precond must be stupid or None")
+
+        if "halfreorth" not in keys:
+            self.options["halfreorth"] = False
+        elif type(self.options["halfreorth"]) != bool:
+            raise Exception("halfreorth must be boolean")
+
+    def solve(self, problem):
+
+        """
+        Effectively solve the problem using the SPG method.
+
+        Input:
+
+          ``problem``: ``ProcrustesProblem`` instance
+
+        Output:
+
+          ``result``: ``OptimizationResult`` instance
+        """
+
+        self.open_file()
+        t0 = time.time()
+        X, fval, normgrad, exitcode, msg = gkb_setup(problem,
+                                                     self.solvername,
+                                                     self.options,
+                                                     self.file)
+        cpu = time.time()-t0
+        self.close_file()
+
+        if 'Xsol' in problem.__dict__:
+            error = sp.norm(X-problem.Xsol, np.inf)
+        else:
+            error = np.inf
+
+        if self.options["full_results"]:
+            if "total_fun" not in problem.stats.keys() or \
+               "total_grad" not in problem.stats.keys():
+                raise Exception("For full results, set "
+                                "problem.stats[\"total_fun\"] and "
+                                "problem.stats[\"total_grad\"]")
+            else:
+                total_fun = problem.stats["total_fun"]
+                total_grad = problem.stats["total_grad"]
+        else:
+            total_fun = np.inf
+            total_grad = np.inf
+
+        result = OptimizeResult(success=(exitcode == 0),
+                                status=exitcode,
+                                message=msg,
+                                solution=X,
+                                fun=fval,
+                                normgrad=normgrad,
+                                error=error,
+                                cpu=cpu,
+                                nbiter=problem.stats["nbiter"],
+                                nfev=problem.stats["fev"],
+                                total_fun=total_fun,
+                                total_grad=total_grad)
+
+        return result
+
+    def open_file(self):
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
+
+    def close_file(self):
+        if self.options["filename"] is not None:
+            self.file.close()
+
+
+class GKBSolver(ProcrustesSolver):
+
+    """
+    Subclass containing the call to the ``gkb_setup()`` function
+    corresponding to the an incommplete Golub-Kahan Bidiagonalization 
+    (Lanczos) as described in :cite:`FranBazaWebe17`. 
+
+    Usage example:
+
+       >>> mysolver = skp.GKBSolver(verbose=3)
+       >>> result = mysolver.solve(problem)
+
+    Input:
+
+    ``key = value``: keyword arguments available
+       - ``full_results``: (*default*: ``False``)
+          Return list of criticality values at each iteration (for later
+          comparison between solvers)
+       - ``filename``: (*default*: None)
+          Decides if we are going to output print statements to stdout
+          or to a file called ``filename``
+       - ``strategy``: (*default*: ``"newfw"``)
+          - ``"monotone"``:
+             monotone trust region
+          - ``"bazfr"`` :
+             nonmonotone method according to :cite:`FranBaza12`
+          - ``"newfw"`` :
+             nonmonotone method according to :cite:`FranBazaWebe17`
+       - ``gtol``: (*default*: ``1e-3``)
+          tolerance for detecting convergence on the gradient
+       -  ``eta``: (*default*: ``0.85``)
+          parameter for the nonmonotone cost computation
+       - ``etavar``: (*default*: ``False``)
+          decide if we are going to vary the parameter eta
+          for the nonmonotone cost computation
+       - ``maxiter``: (*default*: ``5000``)
+          maximum number of iterations allowed
+       - ``verbose``: (*default*: ``1``)
+          verbosity level. Current options:
+          - ``0``: only convergence info
+          - ``1``: only show time and final stats
+          - ``2``: show outer iterations
+          - ``3``: everything (except debug which is set separately)
+       - ``changevar``: (*default*: ``False``)
+          boolean option to allow for a change of variables before starting the
+          method. Currently disabled due to bad performance.
+       - ``bloboptest``: (*default*: ``False``)
+          boolean option to test the computation of a new residual at lower
+          GKB levels to decide if we are going to iterate at this level or
+          give up and add a new block to the bidiagonalization.
+       - ``polar``: (*default*: ``None``)
+          option to decide if we are going to compute the solution of the
+          GKB subproblem via an SVD decomposition or via iterative methods
+          to compute the polar decomposition.
+          Can take values ``ns`` or ``None``.
+       - ``timer``: (*default*: ``False``)
+          decide if we are going to time this run.
+
+    Output:
+
+    ``solver``: ``ProcrustesSolver`` instance
+
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__()
+        self._setoptions(options=kwargs)
+        self.solvername = "gkb"
+
+    def _setoptions(self, options):
+
+        """
+        Sets and validates options for the GKBSolver.
+
+        *This method should not be called directly; it is called by the
+        GKBSolver constructor.*
+        """
+
+        # Options for the solver.
+        # The user should not call this method explicitly, but pass the desired
+        # options as arguments when instantiating a GKBSolver object. If no
         # options are selected by the user, default options are used.
 
         # Keys available:
@@ -635,148 +889,6 @@ class SPGSolver(ProcrustesSolver):
     def solve(self, problem):
 
         """
-        Effectively solve the problem using the SPG method.
-
-        Input:
-
-          ``problem``: ``ProcrustesProblem`` instance
-
-        Output:
-
-          ``result``: ``OptimizationResult`` instance
-        """
-
-        self.open_file()
-        t0 = time.time()
-        X, fval, normgrad, exitcode, msg = gkb_setup(problem,
-                                                          self.solvername,
-                                                          self.options,
-                                                          self.file)
-        cpu = time.time()-t0
-        self.close_file()
-
-        if 'Xsol' in problem.__dict__:
-            error = sp.norm(X-problem.Xsol, np.inf)
-        else:
-            error = np.inf
-
-        if self.options["full_results"]:
-            if "total_fun" not in problem.stats.keys() or \
-               "total_grad" not in problem.stats.keys():
-                raise Exception("For full results, set "
-                                "problem.stats[\"total_fun\"] and "
-                                "problem.stats[\"total_grad\"]")
-            else:
-                total_fun = problem.stats["total_fun"]
-                total_grad = problem.stats["total_grad"]
-        else:
-            total_fun = np.inf
-            total_grad = np.inf
-
-        result = OptimizeResult(success=(exitcode == 0),
-                                status=exitcode,
-                                message=msg,
-                                solution=X,
-                                fun=fval,
-                                normgrad=normgrad,
-                                error=error,
-                                cpu=cpu,
-                                nbiter=problem.stats["nbiter"],
-                                nfev=problem.stats["fev"],
-                                total_fun=total_fun,
-                                total_grad=total_grad)
-
-        return result
-
-    def open_file(self):
-        if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
-        else:
-            self.file = sys.stdout
-
-    def close_file(self):
-        if self.options["filename"] is not None:
-            self.file.close()
-
-
-class GKBSolver(SPGSolver):
-
-    """
-    Subclass containing the call to the ``gkb_setup()`` function
-    corresponding to the Spectral Projected Gradient Method using
-    incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in
-    :cite:`FranBazaWebe17`. This class extends the ``SPGSolver`` class,
-    with some variation in the input and output parameters.
-
-    Usage example:
-
-       >>> mysolver = skp.GKBSolver(verbose=3)
-       >>> result = mysolver.solve(problem)
-
-    Input:
-
-    ``key = value``: keyword arguments available
-       - ``full_results``: (*default*: ``False``)
-          Return list of criticality values at each iteration (for later
-          comparison between solvers)
-       - ``filename``: (*default*: None)
-          Decides if we are going to output print statements to stdout
-          or to a file called ``filename``
-       - ``strategy``: (*default*: ``"newfw"``)
-          - ``"monotone"``:
-             monotone trust region
-          - ``"bazfr"`` :
-             nonmonotone method according to :cite:`FranBaza12`
-          - ``"newfw"`` :
-             nonmonotone method according to :cite:`FranBazaWebe17`
-       - ``gtol``: (*default*: ``1e-3``)
-          tolerance for detecting convergence on the gradient
-       -  ``eta``: (*default*: ``0.85``)
-          parameter for the nonmonotone cost computation
-       - ``etavar``: (*default*: ``False``)
-          decide if we are going to vary the parameter eta
-          for the nonmonotone cost computation
-       - ``maxiter``: (*default*: ``5000``)
-          maximum number of iterations allowed
-       - ``verbose``: (*default*: ``1``)
-          verbosity level. Current options:
-          - ``0``: only convergence info
-          - ``1``: only show time and final stats
-          - ``2``: show outer iterations
-          - ``3``: everything (except debug which is set separately)
-       - ``changevar``: (*default*: ``False``)
-          boolean option to allow for a change of variables before starting the
-          method. Currently disabled due to bad performance.
-       - ``bloboptest``: (*default*: ``False``)
-          boolean option to test the computation of a new residual at lower
-          GKB levels to decide if we are going to iterate at this level or
-          give up and add a new block to the bidiagonalization.
-       - ``polar``: (*default*: ``None``)
-          option to decide if we are going to compute the solution of the
-          GKB subproblem via an SVD decomposition or via iterative methods
-          to compute the polar decomposition.
-          Can take values ``ns`` or ``None``.
-       - ``timer``: (*default*: ``False``)
-          decide if we are going to time this run.
-
-    Output:
-
-    ``solver``: ``ProcrustesSolver`` instance
-
-    .. note::
-
-       Since this subclass extends SPGSolver class, we use
-       ``SPGSolver._setoptions`` directly.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__()
-        super()._setoptions(options=kwargs)
-        self.solvername = "gkb"
-
-    def solve(self, problem):
-
-        """
         Effectively solve the problem using the GKB method.
 
         Input:
@@ -791,9 +903,9 @@ class GKBSolver(SPGSolver):
         self.open_file()
         t0 = time.time()
         X, fval, opt, exitcode, msg = gkb_setup(problem,
-                                                     self.solvername,
-                                                     self.options,
-                                                     self.file)
+                                                self.solvername,
+                                                self.options,
+                                                self.file)
         cpu = time.time()-t0
         self.close_file()
 
@@ -832,10 +944,14 @@ class GKBSolver(SPGSolver):
         return result
 
     def open_file(self):
-        super().open_file()
+        if self.options["filename"] is not None:
+            self.file = open(self.options["filename"], "w")
+        else:
+            self.file = sys.stdout
 
     def close_file(self):
-        super().close_file()
+        if self.options["filename"] is not None:
+            self.file.close()
 
 
 class EBSolver(ProcrustesSolver):

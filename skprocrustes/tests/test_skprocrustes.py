@@ -163,9 +163,6 @@ class TestSPGSolver(TestCase):
     def test_setoptions_changevar(self):
         assert_raises(Exception, skp.SPGSolver, changevar=1)
 
-    def test_setoptions_bloboptest(self):
-        assert_raises(Exception, skp.SPGSolver, bloboptest=1)
-
     def test_setoptions_polar(self):
         assert_raises(Exception, skp.SPGSolver, polar=1)
 
