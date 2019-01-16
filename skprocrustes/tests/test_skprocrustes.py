@@ -192,6 +192,9 @@ class TestGKBSolver(TestCase):
     def test_setoptions_strategy(self):
         assert_raises(Exception, skp.GKBSolver, strategy=" ")
 
+    def test_setoptions_inner_solver(self):
+        assert_raises(Exception, skp.GKBSolver, inner_solver=" ")
+
     def test_setoptions_gtol(self):
         assert_raises(Exception, skp.GKBSolver, gtol=" ")
 
@@ -220,7 +223,7 @@ class TestGKBSolver(TestCase):
         assert_raises(Exception, skp.GKBSolver, timer=3)
 
     def test_setoptions_precond(self):
-        assert_raises(Exception, skp.SPGSolver, precond=1)
+        assert_raises(Exception, skp.GKBSolver, precond=1)
 
 
 # Testing functions inside EBSolver class:
@@ -335,68 +338,117 @@ class TestSpectralSolver(TestCase):
 #    def test_spectral_solver_spg_constraint_violation(self):
 #    não sei como fazer
 
-    # gkb solver
-    def test_spectral_solver_known_solution_gkb_small(self):
+
+class TestGKBSetup(TestCase): 
+    
+    def test_gkb_spg_known_solution_small(self):
         A = np.eye(10, 10)
         C = np.eye(2, 2)
         Xsol = np.eye(10, 2)
         B = np.dot(A, np.dot(Xsol, C))
         problem = skp.ProcrustesProblem((10, 10, 2, 2), matrices=(A, B, C))
-        mysolver = skp.GKBSolver(verbose=0)
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, np.eye(10, 2), atol=1e-3)
 
-    def test_spectral_solver_known_solution_gkb_problem_1(self):
+    def test_gkb_spg_known_solution_problem_1(self):
         problem = skp.ProcrustesProblem((100, 100, 10, 10), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0)
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_known_solution_gkb_problem_2(self):
+    def test_gkb_spg_known_solution_problem_2(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=2)
-        mysolver = skp.GKBSolver(verbose=0)
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
     # TODO: test known solution for problem 3.
 
-    def test_spectral_solver_gkb_polar_None(self):
+    def test_gkb_spg_polar_None(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, polar=None)
+        mysolver = skp.GKBSolver(verbose=0, polar=None, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_polar_ns(self):
+    def test_gkb_spg_polar_ns(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, polar="ns")
+        mysolver = skp.GKBSolver(verbose=0, polar="ns", inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_eta(self):
+    def test_gkb_spg_eta(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, eta=0.1)
+        mysolver = skp.GKBSolver(verbose=0, eta=0.1, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_etavar(self):
+    def test_gkb_spg_etavar(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, etavar=True)
+        mysolver = skp.GKBSolver(verbose=0, etavar=True, inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_filename(self):
+    def test_gkb_spg_filename(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt")
+        mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt", inner_solver="spg")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 
-    def test_spectral_solver_gkb_changevar(self):
-        # this test makes no sense?
-        # TODO fix this
-        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.GKBSolver(verbose=0, changevar=True)
+    def test_gkb_gbb_known_solution_small(self):
+        A = np.eye(10, 10)
+        C = np.eye(2, 2)
+        Xsol = np.eye(10, 2)
+        B = np.dot(A, np.dot(Xsol, C))
+        problem = skp.ProcrustesProblem((10, 10, 2, 2), matrices=(A, B, C))
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, np.eye(10, 2), atol=1e-3)
+
+    def test_gkb_gbb_known_solution_problem_1(self):
+        problem = skp.ProcrustesProblem((100, 100, 10, 10), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="gbb")
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_gkb_gbb_known_solution_problem_2(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=2)
+        mysolver = skp.GKBSolver(verbose=0, inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    # TODO: test known solution for problem 3.
+
+    def test_gkb_gbb_polar_None(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, polar=None, inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_gkb_gbb_polar_ns(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, polar="ns", inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_gkb_gbb_eta(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, eta=0.1, inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_gkb_gbb_etavar(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, etavar=True, inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
+    def test_gkb_gbb_filename(self):
+        problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
+        mysolver = skp.GKBSolver(verbose=0, filename="testspgfilename.txt", inner_solver="gbb")
+        result = mysolver.solve(problem)
+        assert_allclose(result.solution, problem.Xsol, atol=1e-3)
+
 
 class TestBlockBidiag(TestCase):
 
