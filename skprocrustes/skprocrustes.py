@@ -16,10 +16,10 @@
 #
 #   > SPGSolver: spectral projected gradient method - no blocks
 #                uses full SVD at each outer iteration
-#   > GKBSolver: spectral projected gradient method - block GKB
-#                uses block Lanczos bidiagonalization to gradually
-#                increase the problem size and hopefully solve the
-#                Procrustes problem before full matrix is used.
+#   > GKBSolver: block GKB method; uses block Lanczos bidiagonalization
+#                to gradually increase the problem size and hopefully solve
+#                the Procrustes problem before full matrix is used.
+#                The internal method can be SPGSolver or GBBSolver.
 #   > EBSolver : expansion-balance method
 #   > GPISolver: Generalized Power Iteration method for WOPP
 #   > GBBSolver: Curvilinear search method for WOPP
@@ -433,7 +433,7 @@ class ProcrustesSolver:
 
 class SPGSolver(ProcrustesSolver):
     """
-    Subclass containing the call to the ``spectral_setup()`` function
+    Subclass containing the call to the ``gkb_setup()`` function
     corresponding to the Spectral Projected Gradient solver described in
     :cite:`FranBaza12` and :cite:`FranBazaWebe17`.
 
@@ -648,7 +648,7 @@ class SPGSolver(ProcrustesSolver):
 
         self.open_file()
         t0 = time.time()
-        X, fval, normgrad, exitcode, msg = spectral_setup(problem,
+        X, fval, normgrad, exitcode, msg = gkb_setup(problem,
                                                           self.solvername,
                                                           self.options,
                                                           self.file)
@@ -702,7 +702,7 @@ class SPGSolver(ProcrustesSolver):
 class GKBSolver(SPGSolver):
 
     """
-    Subclass containing the call to the ``spectral_setup()`` function
+    Subclass containing the call to the ``gkb_setup()`` function
     corresponding to the Spectral Projected Gradient Method using
     incomplete Golub-Kahan Bidiagonalization (Lanczos) as described in
     :cite:`FranBazaWebe17`. This class extends the ``SPGSolver`` class,
@@ -790,7 +790,7 @@ class GKBSolver(SPGSolver):
 
         self.open_file()
         t0 = time.time()
-        X, fval, opt, exitcode, msg = spectral_setup(problem,
+        X, fval, opt, exitcode, msg = gkb_setup(problem,
                                                      self.solvername,
                                                      self.options,
                                                      self.file)
@@ -1446,9 +1446,9 @@ class GBBSolver(ProcrustesSolver):
     def close_file(self):
         if self.options["filename"] is not None:
             self.file.close()
-
             
-def spectral_setup(problem, solvername, options, fileobj):
+            
+def gkb_setup(problem, solvername, options, fileobj):
 
     """
     Set up parameters according to the optimization method chosen.
@@ -2297,45 +2297,28 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
         # Uip1Bip1 = QR(prod)
         Umat = np.copy(U)
         
-        if not halfreorth:
-            # [Q, R] = sp.qr(np.hstack((U[0:m, 0:inds], prod)))
-            # Uip1 = np.copy(Q)
-            # Bip1 = R[inds:inds+s, inds:inds+s]
-            # debug = True
-            # if debug:
-            #     print("Erro bidiaggs = {}\n"
-            #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
-            #                          - prod)))
-            Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, False)
-        else:
+        if halfreorth:
             #reorth = reorth + inds
-            #[Q1, R1] = sp.qr(prod)
-            #Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
-            #Bip1 = R1[0:s, 0:s]
-            #debug = True
-            #if debug:
-            #    print("\nErro bidiaggs QR = {}"
-            #          .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
+            [Q1, R1] = sp.qr(prod)
+            Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
+            Bip1 = R1[0:s, 0:s]
+            debug = True
+            if debug:
+                print("\nErro bidiaggs QR = {}"
+                      .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
 
             # TODO try to make this faster? 
-            Q2, R2, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
-            Uip1 = np.hstack((U[0:m, 0:inds], Q2[0:m, inds:inds+s], np.zeros((m,m-inds-s))))
-            Bip1 = R2[0:s, 0:s]
-            #debug = True
-            #if debug:
-            #     print(Q1)
-            #     print(Q2)
-            #     print(np.abs(Q1[0:m, 0:s]) - np.abs(Q2[0:m, inds:inds+s]))
-            #     print(sp.norm(np.abs(Q1[0:m, 0:s]) - np.abs(Q2[0:m, inds:inds+s])))
-            #     print("Erro bidiaggs = {}\n"
-            #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
-            #                           - prod)))
+            #Q2, R2, reorth = bidiaggs(inds, prod, Umat, gstol, reorth, True)
+            #Uip1 = np.hstack((U[0:m, 0:inds], Q2[0:m, inds:inds+s], np.zeros((m,m-inds-s))))
+            #Bip1 = R2[0:s, 0:s]
+        else:
+            Uip1, Bip1, reorth = bidiaggs(inds, prod, Umat, gstol, reorth)
 
-        # debug = True
-        # if debug:
-        #     print("Erro bidiaggs = {}\n"
-        #           .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
-        #                           - prod)))
+            debug = False
+            if debug:
+                print("Erro bidiaggs = {}\n"
+                      .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1)
+                                      - prod)))
 
         # Now, the blocks go into U and T.
         U = np.copy(Uip1)
@@ -2348,13 +2331,7 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
                 - np.dot(V[0:n, inds-s:inds], T[inds:inds+s, inds-s:inds].T))
 
         Vmat = np.copy(V)
-        #if not halfreorth:
-        Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth, False)
-        #else:
-        #    [Q, R] = sp.qr(np.hstack((Vmat[0:n, 0:inds], prod)))
-        #    Vip1 = np.hstack((Q[0:n, 0:inds+s], np.zeros((n, n-inds-s))))
-        #    Aip1 = R[inds:inds+s, inds:inds+s]
-        #    reorth = reorth + inds
+        Vip1, Aip1, reorth = bidiaggs(inds, prod, Vmat, gstol, reorth)
                                        
         V = np.copy(Vip1)
         T[inds:inds+s, inds:inds+s] = np.copy(Aip1.T)
@@ -2376,7 +2353,7 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
     return U, V, T, B1, reorth
 
 
-def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
+def bidiaggs(inds, prod, mat, gstol, reorth):
 
     """ Computing one block of blockbidiag at a time:
     this routine computes the QR decomposition of A using
@@ -2393,6 +2370,8 @@ def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
     # However, we need the complete mat here because we will
     # reorthogonalize, when necessary, against all columns of Umat.
 
+    # Now, we will reorthogonalize each column k of prod with respect to all
+    # previous columns
     for k in range(0, s):
         # k is the current column
         indspk = inds+k
@@ -2409,6 +2388,7 @@ def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
         # (the transpose on prod is irrelevant; np.dot takes care of that)
         temp = np.diag(np.dot(A[:, k].T, mat[:, 0:indspk]))
         A[:, k] = A[:, k] - np.sum(np.dot(mat[:, 0:indspk], temp), axis=1)
+
         # If mat = Umat, then
         # B_{i+1} = T(s*i+1:s*(i+1),s*(i-1)+1:s*i)
         # B_{i+1}(k,k) = norm(UU_{i+1}(:,k))
@@ -2419,44 +2399,28 @@ def bidiaggs(inds, prod, mat, gstol, reorth, halfreorth):
 
         # B{i+1}(k, k) = norm(prod[0:m, k])
         # A{i+1}[k, k] = sp.norm(prod[0:n,k])
-        #R[k, k] = sp.norm(A[:, k])
+        R[k, k] = sp.norm(A[:, k])
 
-        #if abs(R[k, k]) < gstol and halfreorth:
-        if halfreorth:
-            # U_{i+1}(:,k) = UU_{i+1}(:,k)/B_{i+1}(k,k)
-            # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
-            #for j in range(0, A.shape[0]):
-            #    A[j, k] = np.random.randn(1)
-            
-            # Reorthogonalize against recently computed elements
-            temp = np.diag(np.dot(A[:, k].T, mat[:, inds:indspk]))
-            A[:, k] = A[:, k] - np.sum(np.dot(mat[:, inds:indspk], temp), axis=1)
-            #for j in range(inds, indspk):
-            #    A[:, k] = A[:, k] - np.dot(A[:, k], mat[:, j]) * mat[:, j]
-            mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
-            
-        #elif abs(R[k,k]) < gstol and not halfreorth:
-        else:
+        if abs(R[k, k]) < gstol:
             reorth = reorth + 1
             # TODO CHECK THIS
             # Trying out not using random numbers when
             # reorthogonalizing to keep results controlled
             # A[:,k] = np.zeros((A.shape[0],))
             # A[k,k] = 1.0
-            #for j in range(0, A.shape[0]):
-            #    A[j, k] = np.random.randn(1)
+            for j in range(0, A.shape[0]):
+                A[j, k] = np.random.randn(1)
 
             # Reorthogonalize against all computed elements
             temp = np.diag(np.dot(A[:, k].T, mat[:, 0:indspk]))
             A[:, k] = A[:, k] - np.sum(np.dot(mat[:, 0:indspk], temp), axis=1)
 
             mat[:, indspk] = A[:, k] / sp.norm(A[:, k])
-        #else:
+        else:
             # U_{i+1}(:,k) = UU_{i+1}(:,k)/B_{i+1}(k,k)
             # V_{i+1}(:,k) = VV_{i+1}(:,k)/A_{i+1}(k,k)
-            #mat[:, indspk] = A[:, k] / R[k, k]
+            mat[:, indspk] = A[:, k] / R[k, k]
 
-        R[k,k] = sp.norm(A[:, k])
         for j in range(k + 1, s):
             # B_{i+1}(k,j) = U_{i+1}(:,k)'*UU_{i+1}(:,j)
             # A_{i+1}(k,j) = V_{i+1}(:,k)'*VV_{i+1}(:,j)

@@ -453,6 +453,56 @@ class TestBlockBidiag(TestCase):
         maxerror = np.max(T[:, 0:n] - np.dot(U.T, np.dot(A, V)))
         assert_allclose(maxerror, 0, atol=1e-10)
 
+    def test_blockbidiag_halfreorth(self):
+
+        # m = 3
+        # n = 3
+        # q = 3
+        # nsteps = 1
+        # partial = 0
+        # A = np.array([[0,2,1],[1,1,2],[0,0,3]])
+        # B = np.copy(A)
+        # Qtrue = np.array([[0,1,0],[1,0,0],[0,0,1]])
+        # Rtrue = np.array([[1,1,2],[0,2,1],[0,0,3]])
+
+        m, n, p, q = (6, 6, 2, 2)
+        nsteps = 0
+        partial = 0
+        Qtrue = np.array([[1, 0, 0, 0, 0, 0],
+                          [0, 0, 1, 0, 0, 0],
+                          [0, 0, 0, 1, 0, 0],
+                          [0, 1, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 1],
+                          [0, 0, 0, 0, 1, 0]])
+        Rtrue = np.array([[1, 2, 3, 4, 5, 6],
+                          [0, 1, 2, 3, 4, 5],
+                          [0, 0, 1, 2, 3, 4],
+                          [0, 0, 0, 1, 2, 3],
+                          [0, 0, 0, 0, 1, 2],
+                          [0, 0, 0, 0, 0, 1]])
+        A = np.dot(Qtrue, Rtrue)
+        B = np.dot(A, np.ones((n, p)))
+        C = np.eye(p, q)
+
+        U = np.zeros((m, m))
+        V = np.zeros((n, n))
+        T = np.zeros((m, n+q))
+
+        problem = skp.ProcrustesProblem((m, n, p, q), matrices=(A, B, C))
+
+        halfreorth = True
+        U, V, T, B1, reorth = skp.blockbidiag(problem, U, V, T, nsteps,
+                                              partial, halfreorth)
+
+        # print("\nT = {}\n".format(T[0:largedim, 0:smalldim]))
+        # print("U = {}\n".format(U[0:m, 0:largedim]))
+        # print("V = {}\n".format(V[0:n, 0:smalldim]))
+        # print("T - UT*A*V = {}\n".format(T[0:largedim, 0:smalldim] - \
+        #    np.dot(U[0:m, 0:largedim].T, np.dot(A, V[0:n, 0:smalldim]))))
+
+        maxerror = np.max(T[:, 0:n] - np.dot(U.T, np.dot(A, V)))
+        assert_allclose(maxerror, 0, atol=1e-10)
+
 
 class TestBidiagGs(TestCase):
 
@@ -460,7 +510,7 @@ class TestBidiagGs(TestCase):
 
         A = np.array([[0, 0, 3], [1, 3, 4], [0, 2, 1]])
         Q2 = np.eye(3, 3)
-        Q2, R2, reorth = skp.bidiaggs(0, A, Q2, 1e-10, 0, False)
+        Q2, R2, reorth = skp.bidiaggs(0, A, Q2, 1e-10, 0)
         erro_bidiag = sp.norm(np.dot(Q2, R2) - A)
         assert_allclose(erro_bidiag, 0)
 
