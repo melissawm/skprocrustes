@@ -778,13 +778,12 @@ class GKBSolver(ProcrustesSolver):
         # - filename: Decides if we are going to output print statements to
         #             stdout or to a file called filename
         #
+        # - gtol: tolerance for detecting convergence on the gradient
+        #
         # - strategy:
         #   > "monotone": monotone trust region
         #   > "bazfr"   : nonmonotone method according to [1]
         #   > "newfw"   : nonmonotone method according to [2]
-        #
-        # - inner_solver: core solver for the WOPP. Can be "spg" or "gbb".
-        # - gtol: tolerance for detecting convergence on the gradient
         #
         # - eta: parameter for the nonmonotone cost computation
         #
@@ -798,22 +797,49 @@ class GKBSolver(ProcrustesSolver):
         #            1: only show time and final stats
         #            2: show outer iterations
         #            3: everything (except debug which is set separately)
-        # - changevar: boolean option to allow for a change of variables
-        #              before starting the method. Currently disabled
-        #              due to bad performance
+        #
         # - bloboptest: boolean option to test the computation of a new
         #               residual at lower GKB levels to decide if we are
         #               going to iterate at this level or give up and add a
         #               new block to the bidiagonalization.
-        # - polar: option to decide if we are going to compute the solution of
-        #          the GKB subproblem via an SVD decomposition or via iterative
-        #          methods to compute the polar decomposition.
-        #          Can take values ``ns`` or ``None``.
         # - timer: decide if we are going to time this run.
         #
         # - precond: option to decide if we are going to use
         #            preconditioners or not. Can take values ``stupid``
         #            or ``None``.
+        #
+        # - halfreorth: option to decide if we are going to try to do a
+        #               half reorthogonalization (only on V) for the block
+        #               Lanczos procedure. 
+        #
+        # - inner_solver: core solver for the WOPP. Can be "spg" or "gbb".
+        #   If inner_solver == "spg", the options available are:
+        #
+        #   - changevar: boolean option to allow for a change of variables
+        #                before starting the method. Currently disabled
+        #                due to bad performance
+        #
+        #   - polar: option to decide if we are going to compute the solution of
+        #            the GKB subproblem via an SVD decomposition or via iterative
+        #            methods to compute the polar decomposition.
+        #            Can take values ``ns`` or ``None``.
+        #
+        #   If inner_solver == "gbb", the options available are:
+        #
+        #   - xtol: tolerance for ||X_k - X_{k-1}||
+        #
+        #   - ftol: tolerance for |F_k - F_{k-1}|/(1+|F_{k-1}|)
+        #           usually, max{xtol, gtol} > ftol
+        #
+        #   - zeta: parameter for the linear approximation in line search
+        #
+        #   - kappa: factor for decreasing step size in backtracking line search
+        #
+        #   - tau: Crank-Nicholson update parameter
+        #
+        #   - projected_gradient: choice of computation of projected gradient 
+        #                         TODO expand this comment
+        #
 
         super()._setoptions()
         self.options = options
@@ -829,20 +855,15 @@ class GKBSolver(ProcrustesSolver):
         elif type(self.options["filename"]) != str:
             raise Exception("filename must be a string")
 
-        if "strategy" not in keys:
-            self.options["strategy"] = "newfw"
-        elif self.options["strategy"] not in ("monotone", "bazfr", "newfw"):
-            raise Exception("strategy not implemented")
-
-        if "inner_solver" not in keys:
-            self.options["inner_solver"] = "spg"
-        elif self.options["inner_solver"] not in ("spg", "gbb"):
-            raise Exception("inner_solver not implemented")
-        
         if "gtol" not in keys:
             self.options["gtol"] = 1e-3
         elif type(self.options["gtol"]) != float:
             raise Exception("gtol must be a float")
+
+        if "strategy" not in keys:
+            self.options["strategy"] = "newfw"
+        elif self.options["strategy"] not in ("monotone", "bazfr", "newfw"):
+            raise Exception("strategy not implemented")
 
         if "eta" not in keys:
             self.options["eta"] = 0.85
@@ -864,20 +885,10 @@ class GKBSolver(ProcrustesSolver):
         elif self.options["verbose"] not in (0, 1, 2, 3):
             raise Exception("verbose must be 0, 1, 2 or 3")
 
-        if "changevar" not in keys:
-            self.options["changevar"] = False
-        elif type(self.options["changevar"]) != bool:
-            raise Exception("changevar must be True or False")
-
         if "bloboptest" not in keys:
             self.options["bloboptest"] = False
         elif type(self.options["bloboptest"]) != bool:
             raise Exception("bloboptest must be True or False")
-
-        if "polar" not in keys:
-            self.options["polar"] = None
-        elif self.options["polar"] not in (None, "ns"):
-            raise Exception("polar must be ns or None")
 
         if "timer" not in keys:
             self.options["timer"] = False
@@ -893,6 +904,58 @@ class GKBSolver(ProcrustesSolver):
             self.options["halfreorth"] = False
         elif type(self.options["halfreorth"]) != bool:
             raise Exception("halfreorth must be boolean")
+
+        if "inner_solver" not in keys:
+            self.options["inner_solver"] = "spg"
+        elif self.options["inner_solver"] not in ("spg", "gbb"):
+            raise Exception("inner_solver not implemented")
+
+        if self.options["inner_solver"] == "spg":
+            # Set corresponding options.
+
+            if "changevar" not in keys:
+                self.options["changevar"] = False
+            elif type(self.options["changevar"]) != bool:
+                raise Exception("changevar must be True or False")
+
+            if "polar" not in keys:
+                self.options["polar"] = None
+            elif self.options["polar"] not in (None, "ns"):
+                raise Exception("polar must be ns or None")
+
+        elif self.options["inner_solver"] == "gbb":
+            # Set corresponding options.
+
+            if "xtol" not in keys:
+                self.options["xtol"] = 1e-6
+            elif type(self.options["xtol"]) != float:
+                raise Exception("xtol must be a float")
+            
+            if "ftol" not in keys:
+                self.options["ftol"] = 1e-12
+            elif type(self.options["ftol"]) != float:
+                raise Exception("ftol must be a float")
+
+            if "zeta" not in keys:
+                self.options["zeta"] = 1e-4
+            elif type(self.options["zeta"]) != float:
+                raise Exception("zeta must be a float")
+
+            if "kappa" not in keys:
+                self.options["kappa"] = 0.1
+            elif type(self.options["kappa"]) != float:
+                raise Exception("kappa must be a float")
+
+            if "tau" not in keys:
+                self.options["tau"] = 1e-3
+            elif type(self.options["tau"]) != float:
+                raise Exception("tau must be a float")
+
+            if "projected_gradient" not in keys:
+                self.options["projected_gradient"] = 1
+            elif self.options["projected_gradient"] not in (1, 2):
+                raise Exception("projected_gradient must be 1 or 2")
+
 
     def solve(self, problem):
 
@@ -1390,7 +1453,15 @@ class GBBSolver(ProcrustesSolver):
 
         self.open_file()
         t0 = time.time()
-        X, fval, exitcode, msg = gbb_solver(problem, self.options, self.file)
+
+        m, n, p, q = problem.sizes
+        X0 = np.random.rand(n,p)
+        [X, temp] = sp.qr(X0, mode='economic')
+        
+        exitcode, fval, X, normgrad, outer, msg \
+            = gbb_solver(problem, m, n, X, problem.A, problem.B, \
+                         self.options, False, self.file)
+        
         cpu = time.time()-t0
         self.close_file()
 
@@ -1867,7 +1938,11 @@ def gkb_setup(problem, solvername, options, fileobj):
                                       Bk[0:largedim, 0:q], solvername,
                                       options, inner, fileobj, B1, blobopprod)
             elif options["inner_solver"] == "gbb":
-                pass
+                exitcode, f, Yk, normgradlower, outer, msg \
+                    = gbb_solver(problem, largedim, smalldim, \
+                                 X[0:smalldim, 0:p], Tk, \
+                                 Bk[0:largedim, 0:q], options, inner, \
+                                 fileobj, B1, blobopprod)
             else:
                 print("WRONG INNER SOLVER!")
                 
@@ -2911,7 +2986,8 @@ def gpi_solver(problem, options, fileobj):
     # Sometimes, X assumes some imaginary garbage values.
     return X.real, f, exitcode, msg
 
-def gbb_solver(problem, options, fileobj):
+def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
+               B1=None, blobopprod=0.0):
 
     """
     Curvilinear search solver for problems of the type
@@ -2937,7 +3013,8 @@ def gbb_solver(problem, options, fileobj):
     # X(tau) = X - tau*U * inv( I + 0.5*tau*VU ) * V'*X
     # -------------------------------------
 
-    # OBS. Since in our case X is always real, we do not consider the complex case here.
+    # OBS. Since in our case X is always real, we do not consider the complex
+    # case here.
     # OBS 2. The code below has been removed
     # parameters for the  nonmontone line search by Raydan
     # if ~isfield(opts, 'STPEPS')
@@ -2948,11 +3025,20 @@ def gbb_solver(problem, options, fileobj):
     problem.stats["fev"] = 0
     problem.stats["grad"] = 0
     problem.stats["linear_solver"] = 0
+    problem.stats["feasi"] = 0
+    # "total_fun" and "total_grad" store the criticality info
+    # for each iteration
     if options["full_results"]:
         problem.stats["total_fun"] = []
         problem.stats["total_grad"] = []
 
-    m, n, p, q = problem.sizes
+    # A(largedim, smalldim)
+    # B(largedim, q)
+    # problem.C(p, q)
+    # X(smalldim, p)
+
+    m, n, p, q = problem.sizes  # original sizes, not reduced
+
     exitcode = 0
     msg = ''
     cost = []
@@ -2970,21 +3056,21 @@ def gbb_solver(problem, options, fileobj):
     crit = []
 
     invH = True
-    if p < n/2:
+    if p < smalldim/2:
         invH = False
         eye2p = np.eye(2*p, 2*p)
 
-    X0 = np.random.rand(n,p)
-    [X, temp] = sp.qr(X0, mode='economic', overwrite_a=True)
+    #X0 = np.random.rand(smalldim,p)
+    #[X, temp] = sp.qr(X0, mode='economic', overwrite_a=True)
 
-    R, residual = compute_residual(problem.A, problem.B, problem.C, X, None)
+    R, residual = compute_residual(A, B, problem.C, X, None)
     cost.append(residual)
     
     problem.stats["fev"] = problem.stats["fev"] + 1
     if options["full_results"]:
         problem.stats["total_fun"].append(cost[0])
 
-    normgradproj, normGrad, G = optimality(problem.A, problem.C, R, X, None)
+    normgradproj, normGrad, G = optimality(A, problem.C, R, X, None)
     
     GX = np.dot(G.T, X)
     dtX = G - np.dot(X, GX)
@@ -3021,6 +3107,9 @@ def gbb_solver(problem, options, fileobj):
     else:
         eta = options["eta"]
     f = cost[0]
+
+    oldResidual = 0
+    newResidual = np.Inf
     
     if options["verbose"] > 0:
         print("=========================================", file=fileobj)
@@ -3051,14 +3140,14 @@ def gbb_solver(problem, options, fileobj):
         deriv = options["zeta"]*normG**2  # deriv
         while True:
             if invH:
-                X = sp.solve(np.eye(n,n) + tau*H, XP - tau*RX)
+                X = sp.solve(np.eye(smalldim,smalldim) + tau*H, XP - tau*RX)
             else:
                 aa = sp.solve(eye2p + (0.5*tau)*VU, VX)
                 X = XP - np.dot(U, tau*aa)
 
             # if norm(X'*X - eye(p),'fro') > 1e-6; error('X^T*X~=I'); end
         
-            R, residual = compute_residual(problem.A, problem.B, problem.C, X, None)
+            R, residual = compute_residual(A, B, problem.C, X, None)
             cost.append(residual)
     
             problem.stats["fev"] = problem.stats["fev"] + 1
@@ -3071,7 +3160,51 @@ def gbb_solver(problem, options, fileobj):
             nbiter_ls = nbiter_ls+1
         # end while
 
-        normgradproj, normGrad, G = optimality(problem.A, problem.C, R, X, None)
+        ## Here I changed for verify stagnation in the iterations
+    
+        ## Yp = X((nbl-1)*k + 1: nbl*k, :);
+        ## %nry2 = nry3;
+        ## nry3 = 2*norm(Ra*Rb*Yp,'fro');
+        ## %nn1 = sqrt(nrmG^2 + nry1^2);
+        ## %nry2 = ( itr*nry2 + nry3 )/(itr + 1);
+        ## %[abs(nry3 - nry2), nry2]
+        ## %nn2 = sqrt(nrmG^2 + nry2^2);
+        ## %abs(nn1 - nn2)
+        ## if sqrt(nrmG^2 + nry3^2) <= 1e-4
+        ##   fprintf('\n I stopped by the new requirement\n')
+        ##   break
+        ## end
+        ##################################### BLOBOP
+        newResidual = None
+        if inner:
+            calB = np.zeros((largedim, p))
+            calB[0:p, 0:p] = np.copy(B1)
+            resBlobop1 = normG
+            # Z(p)(k) is the last pxp block of X.
+            Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
+            # blobopprod is an input parameter
+            res2 = np.dot(blobopprod, Zpk)
+            resBlobop2 = sp.norm(res2, "fro")
+
+            newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+            if options["verbose"] > 1:
+                print("       New BLOBOP Residual = {}"
+                      .format(newResidual), file=fileobj)
+                print("       Old BLOBOP Residual = {}"
+                      .format(oldResidual), file=fileobj)
+
+                if options["bloboptest"]:
+                    if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
+                        flag_while = False
+                        if options["verbose"] > 1:
+                            print(" Leaving because of blobop.", file=fileobj)
+                        else:
+                            oldResidual = newResidual
+                    else:
+                        oldResidual = newResidual
+        # ##################################### BLOBOP
+        
+        normgradproj, normGrad, G = optimality(A, problem.C, R, X, None)
             
         GX = np.dot(G.T, X)
         dtX = G - np.dot(X, GX)
@@ -3082,7 +3215,6 @@ def gbb_solver(problem, options, fileobj):
         if options["full_results"]:
             problem.stats["total_grad"].append(normG)
             
-        GX = np.dot(G.T, X)
         if invH:
             GXT = np.dot(G, X.T)
             H = 0.5*(GXT - GXT.T)
@@ -3190,7 +3322,7 @@ def gbb_solver(problem, options, fileobj):
 
     problem.stats["nbiter"] = nbiter
 
-    # out.feasi = norm(X'*X-eye(p),'fro');
+    problem.stats["feasi"] = sp.norm(np.dot(X.T, X) - np.eye(p,p),'fro')
     # %if  out.feasi > 1e-13
     # %    X = MGramSchmidt(X);
     # %    [F,G] = feval(fun, X, varargin{:});
@@ -3198,11 +3330,7 @@ def gbb_solver(problem, options, fileobj):
     # %    out.feasi = norm(X'*X-eye(p),'fro');
     # %end
     
-    return X, f, exitcode, msg
-
-
-# function [X, out]= OptStiefelGBB(X, fun, opts, varargin)
-
+    return exitcode, f, X, normG, nbiter, msg
 
 
 def compare_solvers(problem, *args, plot=False):

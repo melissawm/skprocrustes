@@ -24,7 +24,7 @@ __all__ = ['ProcrustesProblem', 'OptimizeResult', 'ProcrustesSolver',
            'gbb_solver', 'spg_solver', 'blockbidiag', 'bidiaggs',
            'compare_solvers', 'compute_residual']
 
-__version__ = "0.1"
+__version__ = "1.0"
 # If you want to use Numpy's testing framerwork, use the following.
 # Tests go under directory tests/, benchmarks under directory benchmarks/
 
