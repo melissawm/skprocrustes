@@ -4,6 +4,7 @@ from numpy.testing import (assert_raises, assert_allclose, assert_equal,
                            assert_array_less)
 from scipy import linalg as sp
 import skprocrustes as skp
+import tempfile
 
 
 # Testing functions inside ProcrustesProblem class:
@@ -139,8 +140,13 @@ class TestSPGSolver(TestCase):
     def test_setoptions_full_results(self):
         assert_raises(Exception, skp.SPGSolver, full_results=" ")
 
-    def test_setoptions_filename(self):
+    def test_setoptions_filename_not_string(self):
         assert_raises(Exception, skp.SPGSolver, filename=1)
+
+    def test_setoptions_filename_exists(self):
+        tf = tempfile.NamedTemporaryFile()
+        # tf.name retrieves the name of the temp file just created
+        assert_raises(Exception, skp.SPGSolver, filename=tf.name)
 
     def test_setoptions_strategy(self):
         assert_raises(Exception, skp.SPGSolver, strategy=" ")
@@ -380,7 +386,8 @@ class TestSpectralSolver(TestCase):
 
     def test_spectral_solver_spg_filename(self):
         problem = skp.ProcrustesProblem((4, 4, 2, 2), problemnumber=1)
-        mysolver = skp.SPGSolver(verbose=0, filename="testspgfilename.txt")
+        
+        mysolver = skp.SPGSolver(verbose=0, filename=tf.name)
         result = mysolver.solve(problem)
         assert_allclose(result.solution, problem.Xsol, atol=1e-3)
 

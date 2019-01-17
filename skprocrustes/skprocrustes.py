@@ -38,6 +38,7 @@ import matplotlib.pyplot as plt
 import sys
 import datetime
 import time
+import os
 
 # standard status messages of optimizers (based on scipy.optimize)
 _status_message = {'success': 'Optimization terminated successfully.',
@@ -48,7 +49,7 @@ _status_message = {'success': 'Optimization terminated successfully.',
                    'smallpred': 'Small PRED',
                    'negativepred': 'Negative PRED',
                    'maxiter': 'Maximum number of iterations has been '
-                   'exceeded.'}
+                              'exceeded.'}
 
 
 class ProcrustesProblem:
@@ -120,12 +121,6 @@ class ProcrustesProblem:
         # stats will be filled when the optimization is finished and
         # will be returned in the OptimizeResult instance.
         self.stats = dict([])
-        # { "nbiter": 0,
-        #   "svd": 0,
-        #   "fev": 0,
-        #   "gradient": 0,
-        #   "blocksteps": 0,
-        #   "full_results": [None]}
 
     def _setproblem(self, matrices, problemnumber):
 
@@ -339,28 +334,30 @@ class OptimizeResult(dict):
        Matrix representing the solution found by the method.
     - ``fun`` : ``float``
        Value of the objective function at the solution.
-    - ``normgrad`` : ``float``
-       Value of the norm of the gradient at the solution.
+    - ``normcrit`` : ``float``
+       Value of the norm of the criticality measure (e.g. gradient) at 
+       the solution.
     - ``nbiter`` : ``int``
        Number of iterations performed by the optimizer.
     - ``nfev`` : ``int``/``float``
        Number of evaluations of the objective function (if called by
        GKBSolver, nfev is a float representing the proportional number
        of calls to the objective function at each block step).
-    - ``blocksteps`` : ``int``
-       Number of blocksteps performed (if called by GKBSolver)
     - ``total_fun``: list
        List of objective function values for each iteration performed
        (used to report and compare algorithms). Only if ``full_results``
        is True.
-    - ``total_grad``: list
-       List of gradient norm values for each iteration performed
-       (used to report and compare algorithms). Only if ``full_results``
-       is True, and only for SPGSolver and GKBSolver.
     - ``total_crit``: list
        List of criticality measure values for each iteration performed
        (used to report and compare algorithms). Only if ``full_results``
-       is True, and only for EBSolver and GPISolver.
+       is True.
+    - ``cpu``: ``float``
+       CPU time required for convergence.
+    - ``error``: ``float``
+       Frobenius norm of the difference between exact and approximate 
+       solutions.
+    - ``blocksteps`` : ``int``
+       Number of blocksteps performed (if called by GKBSolver)
 
     Notes:
     There may be additional attributes not listed above depending of the
@@ -439,7 +436,7 @@ class SPGSolver(ProcrustesSolver):
 
     Usage example:
 
-       >>> mysolver = skp.SPGSolver(verbose=3)
+       >>> mysolver = skp.SPGSolver(verbose=2)
        >>> result = mysolver.solve(problem)
 
     Input:
@@ -563,6 +560,9 @@ class SPGSolver(ProcrustesSolver):
             self.options["filename"] = None
         elif type(self.options["filename"]) != str:
             raise Exception("filename must be a string")
+        elif os.path.exists(self.options["filename"]):
+            raise Exception("\"{}\" already exists."
+                            .format(self.options["filename"]))
 
         if "strategy" not in keys:
             self.options["strategy"] = "newfw"
@@ -665,13 +665,13 @@ class SPGSolver(ProcrustesSolver):
                                 message=msg,
                                 solution=X,
                                 fun=fval,
-                                normgrad=normgrad,
+                                normcrit=normgrad,
                                 error=error,
                                 cpu=cpu,
                                 nbiter=problem.stats["nbiter"],
                                 nfev=problem.stats["fev"],
                                 total_fun=total_fun,
-                                total_grad=total_grad)
+                                total_crit=total_grad)
 
         return result
 
@@ -1003,20 +1003,25 @@ class GKBSolver(ProcrustesSolver):
                                 message=msg,
                                 solution=X,
                                 fun=fval,
-                                opt=opt,
+                                normcrit=opt,
                                 error=error,
                                 cpu=cpu,
                                 nbiter=problem.stats["nbiter"],
                                 nfev=problem.stats["fev"],
                                 blocksteps=problem.stats["blocksteps"],
                                 total_fun=total_fun,
-                                total_grad=total_grad)
+                                total_crit=total_grad)
 
         return result
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            try:
+                self.file = open(self.options["filename"], "w")
+            except OSError:
+                print("ERROR: \"{}\" is not a valid filename"
+                      .format(self.options["filename"]))
+                sys.exit(-1)
         else:
             self.file = sys.stdout
 
@@ -1197,7 +1202,12 @@ class EBSolver(ProcrustesSolver):
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            try:
+                self.file = open(self.options["filename"], "w")
+            except OSError:
+                print("ERROR: \"{}\" is not a valid filename"
+                      .format(self.options["filename"]))
+                sys.exit(-1)
         else:
             self.file = sys.stdout
 
@@ -1368,7 +1378,12 @@ class GPISolver(ProcrustesSolver):
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            try:
+                self.file = open(self.options["filename"], "w")
+            except OSError:
+                print("ERROR: \"{}\" is not a valid filename"
+                      .format(self.options["filename"]))
+                sys.exit(-1)
         else:
             self.file = sys.stdout
 
@@ -1634,7 +1649,12 @@ class GBBSolver(ProcrustesSolver):
 
     def open_file(self):
         if self.options["filename"] is not None:
-            self.file = open(self.options["filename"], "w")
+            try:
+                self.file = open(self.options["filename"], "w")
+            except OSError:
+                print("ERROR: \"{}\" is not a valid filename"
+                      .format(self.options["filename"]))
+                sys.exit(-1)
         else:
             self.file = sys.stdout
 
@@ -1734,12 +1754,12 @@ def spg_solver(problem, solvername, options, fileobj):
     opt = normg
 
     #if normgrad <= options["gtol"]:
-    #if newResidual <= options["gtol"]:
+    #if newRes <= options["gtol"]:
     if opt <= options["gtol"]:
         msg = _status_message['success']
     else:
         #msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
-        #msg = _status_message['stalled']+" newResidual: {}".format(newResidual)
+        #msg = _status_message['stalled']+" newRes: {}".format(newRes)
         msg = _status_message['stalled']+" opt: {}".format(opt)
         if options["verbose"] > 0:
             print(msg, file=fileobj)
@@ -1816,9 +1836,9 @@ def gkb_setup(problem, solvername, options, fileobj):
 
     residuals = []
     # auxiliaries for blobop
-    oldResidual = 0
-    newResidual = np.Inf
-    opt = newResidual
+    oldRes = 0
+    newRes = np.Inf
+    opt = newRes
 
     # Setting up number of steps allowed in block Lanczos mode
     maxsteps = m/q
@@ -1967,7 +1987,7 @@ def gkb_setup(problem, solvername, options, fileobj):
         #          .format(residual), file=fileobj)
         # ##################################### BLOBOP
         if k > 1 and k < maxsteps:
-            newResidual = None
+            newRes = None
             # TODO check what does inner mean and if we can get rid of it
             if inner:
                 calB = np.zeros((largedim, p))
@@ -1978,14 +1998,14 @@ def gkb_setup(problem, solvername, options, fileobj):
                 res2 = np.dot(blobopprod, Zpk)
                 resBlobop2 = sp.norm(res2, "fro")
                 
-                newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+                newRes = np.sqrt(resBlobop1**2 + resBlobop2**2)
                 if options["verbose"] > 1:
                     print("       Old BLOBOP Residual = {}"
-                          .format(oldResidual), file=fileobj)
+                          .format(oldRes), file=fileobj)
                     print("       New BLOBOP Residual = {}"
-                          .format(newResidual), file=fileobj)
-                oldResidual = newResidual
-                opt = newResidual
+                          .format(newRes), file=fileobj)
+                oldRes = newRes
+                opt = newRes
         # ##################################### BLOBOP
         # if k < maxsteps:
         #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
@@ -2004,12 +2024,12 @@ def gkb_setup(problem, solvername, options, fileobj):
     problem.stats["blocksteps"] = k-1
 
     #if normgrad <= options["gtol"]:
-    #if newResidual <= options["gtol"]:
+    #if newRes <= options["gtol"]:
     if opt <= options["gtol"]:
         msg = _status_message['success']
     else:
         #msg = _status_message['stalled']+" normgrad: {}".format(normgrad)
-        #msg = _status_message['stalled']+" newResidual: {}".format(newResidual)
+        #msg = _status_message['stalled']+" newRes: {}".format(newRes)
         msg = _status_message['stalled']+" opt: {}".format(opt)
         if options["verbose"] > 0:
             print(msg, file=fileobj)
@@ -2210,7 +2230,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
     flag_inner = True
     ftrial = 0.0
     Xold = X.copy()
-    oldResidual = 0.0
+    oldRes = 0.0
     Xtrial = None
     Rtrial = None
 
@@ -2390,7 +2410,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             problem.stats["total_grad"].append(normg)
 
         # ##################################### BLOBOP
-        # newResidual = None
+        # newRes = None
         # if inner:
         #     calB = np.zeros((largedim, p))
         #     calB[0:p, 0:p] = np.copy(B1)
@@ -2404,22 +2424,22 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         #     res2 = np.dot(blobopprod, Zpk)
         #     resBlobop2 = sp.norm(res2, "fro")
 
-        #     newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+        #     newRes = np.sqrt(resBlobop1**2 + resBlobop2**2)
         #     if options["verbose"] > 1:
         #         print("       New BLOBOP Residual = {}"
-        #               .format(newResidual), file=fileobj)
+        #               .format(newRes), file=fileobj)
         #         print("       Old BLOBOP Residual = {}"
-        #               .format(oldResidual), file=fileobj)
+        #               .format(oldRes), file=fileobj)
 
         #     if options["bloboptest"]:
-        #         if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
+        #         if np.abs(newRes - oldRes)/np.abs(newRes) < 0.1:
         #             flag_while = False
         #             if options["verbose"] > 1:
         #                 print(" Leaving because of blobop.", file=fileobj)
         #         else:
-        #             oldResidual = newResidual
+        #             oldRes = newRes
         #     else:
-        #         oldResidual = newResidual
+        #         oldRes = newRes
         # ##################################### BLOBOP
 
         if options["verbose"] > 1:
@@ -2431,7 +2451,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             if inner:
                 print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4} {5:>16.4e}"
                       .format(outer+1, f, cost[outer+1], normg, nbinnerit,
-                              newResidual), file=fileobj)
+                              newRes), file=fileobj)
             else:
                 # outer f normg innerits
                 print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".
@@ -3108,8 +3128,8 @@ def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
         eta = options["eta"]
     f = cost[0]
 
-    oldResidual = 0
-    newResidual = np.Inf
+    oldRes = 0
+    newRes = np.Inf
     
     if options["verbose"] > 0:
         print("=========================================", file=fileobj)
@@ -3175,7 +3195,7 @@ def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
         ##   break
         ## end
         ##################################### BLOBOP
-        newResidual = None
+        newRes = None
         if inner:
             calB = np.zeros((largedim, p))
             calB[0:p, 0:p] = np.copy(B1)
@@ -3186,22 +3206,22 @@ def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
             res2 = np.dot(blobopprod, Zpk)
             resBlobop2 = sp.norm(res2, "fro")
 
-            newResidual = np.sqrt(resBlobop1**2 + resBlobop2**2)
+            newRes = np.sqrt(resBlobop1**2 + resBlobop2**2)
             if options["verbose"] > 1:
                 print("       New BLOBOP Residual = {}"
-                      .format(newResidual), file=fileobj)
+                      .format(newRes), file=fileobj)
                 print("       Old BLOBOP Residual = {}"
-                      .format(oldResidual), file=fileobj)
+                      .format(oldRes), file=fileobj)
 
                 if options["bloboptest"]:
-                    if np.abs(newResidual - oldResidual)/np.abs(newResidual) < 0.1:
+                    if np.abs(newRes - oldRes)/np.abs(newRes) < 0.1:
                         flag_while = False
                         if options["verbose"] > 1:
                             print(" Leaving because of blobop.", file=fileobj)
                         else:
-                            oldResidual = newResidual
+                            oldRes = newRes
                     else:
-                        oldResidual = newResidual
+                        oldRes = newRes
         # ##################################### BLOBOP
         
         normgradproj, normGrad, G = optimality(A, problem.C, R, X, None)
@@ -3307,7 +3327,9 @@ def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
 
         # Print and loop back
         if options["verbose"] > 0:
-            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>16.4e}".format(nbiter+1, f, cost[nbiter]-f, tau, normG), file=fileobj)
+            print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>16.4e}"
+                  .format(nbiter+1, f, cost[nbiter]-f, tau, normG),
+                  file=fileobj)
 
         nbiter = nbiter + 1
     # ===================================================== end while
