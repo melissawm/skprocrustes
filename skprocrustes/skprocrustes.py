@@ -1987,7 +1987,7 @@ def gkb_setup(problem, solvername, options, fileobj):
         #          .format(residual), file=fileobj)
         # ##################################### BLOBOP
         if k > 1 and k < maxsteps:
-            newRes = None
+            #newRes = None
             # TODO check what does inner mean and if we can get rid of it
             if inner:
                 calB = np.zeros((largedim, p))
@@ -2449,9 +2449,9 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             print("             normg = {}".format(normg), file=fileobj)
         elif options["verbose"] == 1:
             if inner:
-                print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4} {5:>16.4e}"
-                      .format(outer+1, f, cost[outer+1], normg, nbinnerit,
-                              newRes), file=fileobj)
+                print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}"
+                      .format(outer+1, f, cost[outer+1], normg, nbinnerit), \
+                      file=fileobj)
             else:
                 # outer f normg innerits
                 print(" {0:>4} {1:>16.4e} {2:>16.4e} {3:>16.4e} {4:>4}".
