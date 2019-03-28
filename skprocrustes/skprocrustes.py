@@ -745,6 +745,7 @@ class GKBSolver(ProcrustesSolver):
           Can take values ``ns`` or ``None``.
        - ``timer``: (*default*: ``False``)
           decide if we are going to time this run.
+       - ``inner_solver``: core solver for the WOPP. Can be "spg" or "gbb".
 
     Output:
 
@@ -2578,7 +2579,7 @@ def blockbidiag(problem, U, V, T, steps, partial, halfreorth):
             [Q1, R1] = sp.qr(prod)
             Uip1 = np.hstack((U[0:m, 0:inds], Q1[0:m, 0:s]))
             Bip1 = R1[0:s, 0:s]
-            debug = True
+            debug = False
             if debug:
                 print("\nErro bidiaggs QR = {}"
                       .format(sp.norm(np.dot(Uip1[0:m, inds:inds+s], Bip1) - prod)))
