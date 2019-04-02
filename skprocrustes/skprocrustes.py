@@ -614,11 +614,6 @@ class SPGSolver(ProcrustesSolver):
         elif self.options["precond"] not in (None, "stupid"):
             raise Exception("precond must be stupid or None")
 
-        if "halfreorth" not in keys:
-            self.options["halfreorth"] = False
-        elif type(self.options["halfreorth"]) != bool:
-            raise Exception("halfreorth must be boolean")
-
     def solve(self, problem):
 
         """
@@ -3434,5 +3429,5 @@ def optimality(A, C, R, X, precond):
     normgrad = sp.norm(grad, 'fro')
     gradproj = np.dot(X, np.dot(X.T, grad) + np.dot(grad.T, X)) - 2.0 * grad
     # normgradproj is computed based on the recommendation of [Francisco, Bazán 2012]
-    normgradproj = sp.norm(gradproj, 'inf')
+    normgradproj = sp.norm(gradproj, np.Inf)
     return normgradproj, normgrad, grad
