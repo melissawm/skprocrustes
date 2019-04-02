@@ -635,6 +635,9 @@ class SPGSolver(ProcrustesSolver):
 
         self.open_file()
         t0 = time.time()
+
+        # Here, normgrad is the infinity norm of the "Projected
+        # Gradient", computed according to [Francisco, Bazán 2012].        
         X, fval, normgrad, exitcode, msg = spg_solver(problem,
                                                       self.solvername,
                                                       self.options,
@@ -927,6 +930,8 @@ class GKBSolver(ProcrustesSolver):
         elif self.options["inner_solver"] == "gbb":
             # Set corresponding options.
 
+            self.options["polar"] = None
+            
             if "xtol" not in keys:
                 self.options["xtol"] = 1e-6
             elif type(self.options["xtol"]) != float:
@@ -1276,7 +1281,7 @@ class GPISolver(ProcrustesSolver):
 
         self.open_file()
         t0 = time.time()
-        X, fval, exitcode, msg = gpi_solver(problem, self.options,
+        X, fval, crit, exitcode, msg = gpi_solver(problem, self.options,
                                             self.file)
         cpu = time.time()-t0
         self.close_file()
@@ -1304,6 +1309,7 @@ class GPISolver(ProcrustesSolver):
                                 message=msg,
                                 solution=X,
                                 fun=fval,
+                                normcrit=crit,
                                 error=error,
                                 cpu=cpu,
                                 nbiter=problem.stats["nbiter"],
@@ -1926,8 +1932,21 @@ def gkb_setup(problem, solvername, options, fileobj):
             
         if k == 1:
             # In the smaller case, we find the exact solution for this GKB iteration.
+            if options["verbose"] > 0:
+                print("Solving smallest problem exactly.", file=fileobj)
             [UX, SX, VXh] = sp.svd(np.dot(Tk.T, Bk))
             Yk = np.dot(UX, VXh)  # solk
+            # what is normg?
+            Xk = np.dot(V[0:n, 0:smalldim], Yk)
+            R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                           Xk, options["precond"])
+            residuals.append(residual)
+            normgradproj, normg, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
+            if options["verbose"] > 1:
+                print("\n       Gradient norm       = {}"
+                      .format(normg), file=fileobj)
+                print("       Residual norm       = {}\n"
+                      .format(residual), file=fileobj)
             intx0 = np.copy(Yk)
             exitcode = 0
             normgradlower = 0
@@ -1976,21 +1995,10 @@ def gkb_setup(problem, solvername, options, fileobj):
         problem.stats["nbiter"] = (problem.stats["nbiter"] +
                                    (largedim/m)*outer)
 
-        #Xk = np.dot(V[0:n, 0:smalldim], Yk)
-        #R, residual = compute_residual(problem.A, problem.B, problem.C,
-        #                               Xk, options["precond"])
-        #residuals.append(residual)
-        #normgrad, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
-        #if options["verbose"] > 1:
-        #    print("\n       Gradient norm       = {}"
-        #          .format(normgrad), file=fileobj)
-        #    print("       Residual norm       = {}\n"
-        #          .format(residual), file=fileobj)
         # ##################################### BLOBOP
         if k > 1 and k < maxsteps:
             #newRes = None
-            # TODO check what does inner mean and if we can get rid of it
-            if inner:
+            if inner and options["bloboptest"]:
                 calB = np.zeros((largedim, p))
                 calB[0:p, 0:p] = np.copy(B1)
                 resBlobop1 = normgradlower
@@ -2007,6 +2015,21 @@ def gkb_setup(problem, solvername, options, fileobj):
                           .format(newRes), file=fileobj)
                 oldRes = newRes
                 opt = newRes
+            elif inner:
+                Xk = np.dot(V[0:n, 0:smalldim], Yk)
+                R, residual = compute_residual(problem.A, problem.B, problem.C,
+                                               Xk, options["precond"])
+                residuals.append(residual)
+                normgradproj, normg, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
+                if options["verbose"] > 1:
+                    print("\n       Proj Gradient norm    = {}"
+                          .format(normgradproj), file=fileobj)
+                    print("       Gradient norm         = {}"
+                          .format(normg), file=fileobj)
+                    print("       Residual norm         = {}\n"
+                          .format(residual), file=fileobj)
+
+                opt = normgradproj
         # ##################################### BLOBOP
         # if k < maxsteps:
         #     realresidual = np.dot(np.eye(n, n)-np.dot(Xk, Xk.T),
@@ -2054,8 +2077,12 @@ def gkb_setup(problem, solvername, options, fileobj):
 
         normgradproj, normgrad, grad = optimality(problem.A, problem.C, R, X, 1.0)
         opt = normgrad
-        if normgrad < options["gtol"]:
+        if normgrad <= options["gtol"]:
             msg = _status_message['success']
+        else:
+            msg = _status_message['stalled']
+            print(normgradproj)
+            print(normgrad)
 
     if options["verbose"] > 0:
         print(msg, file=fileobj)
@@ -2180,8 +2207,8 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         memory = 10
 
     # Lu approximates the Lipschitz constant for the gradient of f
-    Lu = 2.0*sp.norm(
-        np.dot(problem.C, problem.C.T), 'fro')*sp.norm(np.dot(A.T, A), 'fro')
+    Lu = 2.0*sp.norm(np.dot(problem.C, problem.C.T), 'fro')*sp.norm(np.dot(A.T, A), 'fro')
+    # TODO check line below
     if options["precond"] is not None:
         Lu = options["precond"]*Lu
 
@@ -2204,6 +2231,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         quot = 1.0
     f = cost[0]
 
+    # Here, normg is the infinity norm of the "Projected Gradient"
     normg, normgrad, grad = optimality(A, problem.C, R, X, options["precond"])
     problem.stats["gradient"] = problem.stats["gradient"] + 1
 
@@ -2282,7 +2310,7 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
             W = np.copy(X - (1.0/(rho + sigma))*grad)
 
             if options["polar"] == "ns":
-                Xtrial = polardecomp(W, options)
+                    Xtrial = polardecomp(W, options)
             else:
                 # If X is m-by-n with m > n, then svd(X,0) computes only the
                 # first n columns of U and S is (n,n)
@@ -2409,39 +2437,6 @@ def spectral_solver(problem, largedim, smalldim, X, A, B, solvername, options,
         if options["full_results"] and solvername == "spg":
             problem.stats["total_fun"].append(cost[outer+1])
             problem.stats["total_grad"].append(normg)
-
-        # ##################################### BLOBOP
-        # newRes = None
-        # if inner:
-        #     calB = np.zeros((largedim, p))
-        #     calB[0:p, 0:p] = np.copy(B1)
-        #     res1 = np.dot(np.eye(smalldim, smalldim) - np.dot(X, X.T),
-        #                   np.dot(A.T, np.dot(A, X) - calB))
-        #     resBlobop1 = sp.norm(res1, 'fro')
-
-        #     # Z(p)(k) is the last pxp block of X.
-        #     Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
-        #     # blobopprod is an input parameter
-        #     res2 = np.dot(blobopprod, Zpk)
-        #     resBlobop2 = sp.norm(res2, "fro")
-
-        #     newRes = np.sqrt(resBlobop1**2 + resBlobop2**2)
-        #     if options["verbose"] > 1:
-        #         print("       New BLOBOP Residual = {}"
-        #               .format(newRes), file=fileobj)
-        #         print("       Old BLOBOP Residual = {}"
-        #               .format(oldRes), file=fileobj)
-
-        #     if options["bloboptest"]:
-        #         if np.abs(newRes - oldRes)/np.abs(newRes) < 0.1:
-        #             flag_while = False
-        #             if options["verbose"] > 1:
-        #                 print(" Leaving because of blobop.", file=fileobj)
-        #         else:
-        #             oldRes = newRes
-        #     else:
-        #         oldRes = newRes
-        # ##################################### BLOBOP
 
         if options["verbose"] > 1:
             print("\n          OUTER ITERATION {}:\n"
@@ -2980,10 +2975,11 @@ def gpi_solver(problem, options, fileobj):
         criticality = ((np.abs(fold - f) < options["tol"])
                        or (np.abs(f) < options["tol"]))
 
+        crit = min(np.abs(fold-f), np.abs(fold))
+        
         if options["full_results"]:
             problem.stats["total_fun"].append(f)
-            problem.stats["total_crit"].append(min(np.abs(fold-f),
-                                                   np.abs(fold)))
+            problem.stats["total_crit"].append(crit)
 
         # Print and loop back
         nbiter = nbiter + 1
@@ -3005,7 +3001,7 @@ def gpi_solver(problem, options, fileobj):
     problem.stats["nbiter"] = nbiter
 
     # Sometimes, X assumes some imaginary garbage values.
-    return X.real, f, exitcode, msg
+    return X.real, f, crit, exitcode, msg
 
 def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
                B1=None, blobopprod=0.0):
@@ -3195,36 +3191,6 @@ def gbb_solver(problem, largedim, smalldim, X, A, B, options, inner, fileobj,
         ##   fprintf('\n I stopped by the new requirement\n')
         ##   break
         ## end
-        ##################################### BLOBOP
-        newRes = None
-        if inner:
-            calB = np.zeros((largedim, p))
-            calB[0:p, 0:p] = np.copy(B1)
-            resBlobop1 = normG
-            # Z(p)(k) is the last pxp block of X.
-            Zpk = np.copy(X[smalldim-p:smalldim, 0:p])
-            # blobopprod is an input parameter
-            res2 = np.dot(blobopprod, Zpk)
-            resBlobop2 = sp.norm(res2, "fro")
-
-            newRes = np.sqrt(resBlobop1**2 + resBlobop2**2)
-            if options["verbose"] > 1:
-                print("       New BLOBOP Residual = {}"
-                      .format(newRes), file=fileobj)
-                print("       Old BLOBOP Residual = {}"
-                      .format(oldRes), file=fileobj)
-
-                if options["bloboptest"]:
-                    if np.abs(newRes - oldRes)/np.abs(newRes) < 0.1:
-                        flag_while = False
-                        if options["verbose"] > 1:
-                            print(" Leaving because of blobop.", file=fileobj)
-                        else:
-                            oldRes = newRes
-                    else:
-                        oldRes = newRes
-        # ##################################### BLOBOP
-        
         normgradproj, normGrad, G = optimality(A, problem.C, R, X, None)
             
         GX = np.dot(G.T, X)
@@ -3467,5 +3433,6 @@ def optimality(A, C, R, X, precond):
         grad = precond*2.0*np.dot(A.T, np.dot(R, C.T))
     normgrad = sp.norm(grad, 'fro')
     gradproj = np.dot(X, np.dot(X.T, grad) + np.dot(grad.T, X)) - 2.0 * grad
-    normgradproj = sp.norm(gradproj, 'fro')
+    # normgradproj is computed based on the recommendation of [Francisco, Bazán 2012]
+    normgradproj = sp.norm(gradproj, 'inf')
     return normgradproj, normgrad, grad
