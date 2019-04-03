@@ -1393,6 +1393,7 @@ class GPISolver(ProcrustesSolver):
         if self.options["filename"] is not None:
             self.file.close()
 
+
 class GBBSolver(ProcrustesSolver):
 
     """
@@ -1919,12 +1920,6 @@ def gkb_setup(problem, solvername, options, fileobj):
         # T(q*(k+1),q*k) X(q*k,p) C(p,q) - Bk(q*(k+1),q)
         Tk = T[0:largedim, 0:smalldim]
 
-        ###
-        #print("k = {}; Tk is {}x{}".format(k, largedim, smalldim))
-        #for indice in range(0, int(maxsteps)):
-        #    print("Block ({}:{}, {}:{}".format(p*indice+0, p*indice+2*p, p*indice+0, p*indice+p))
-        #    print(Tk[p*indice+0:p*indice+2*p, p*indice+0:p*indice+p]) 
-            
         if k == 1:
             # In the smaller case, we find the exact solution for this GKB iteration.
             if options["verbose"] > 0:
@@ -1938,9 +1933,11 @@ def gkb_setup(problem, solvername, options, fileobj):
             residuals.append(residual)
             normgradproj, normg, grad = optimality(problem.A, problem.C, R, Xk, 1.0)
             if options["verbose"] > 1:
-                print("\n       Gradient norm       = {}"
+                print("\n       Gradient norm           = {}"
                       .format(normg), file=fileobj)
-                print("       Residual norm       = {}\n"
+                print("       Projected Gradient norm = {}"
+                      .format(normgradproj), file=fileobj)
+                print("       Residual norm           = {}\n"
                       .format(residual), file=fileobj)
             intx0 = np.copy(Yk)
             exitcode = 0
@@ -2736,7 +2733,6 @@ def polardecomp(W, options):
 
     return U
 
-
 def polar_newton_schultz(A, tol_cgce):
     m, n = A.shape
     if m > n:
@@ -2765,7 +2761,6 @@ def polar_newton_schultz(A, tol_cgce):
     if m > n:
         X = np.dot(Q, X)
     return X # , H
-
 
 def eb_solver(problem, options, fileobj):
 
@@ -2890,7 +2885,6 @@ def eb_solver(problem, options, fileobj):
     problem.stats["nbiter"] = nbiter
 
     return X, f, exitcode, msg
-
 
 def gpi_solver(problem, options, fileobj):
 
